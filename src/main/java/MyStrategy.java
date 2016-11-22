@@ -1,6 +1,8 @@
 import model.*;
 
-import java.util.*;
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.Random;
 
 public final class MyStrategy implements Strategy {
     private static final double WAYPOINT_RADIUS = 100.0D;
@@ -56,22 +58,20 @@ public final class MyStrategy implements Strategy {
             double distance = self.getDistanceTo(nearestTarget);
 
             // ... и он в пределах досягаемости наших заклинаний, ...
-            if (distance <= self.getCastRange()) {
-                double angle = self.getAngleTo(nearestTarget);
+            double angle = self.getAngleTo(nearestTarget);
 
-                // ... то поворачиваемся к цели.
-                move.setTurn(angle);
+            // ... то поворачиваемся к цели.
+            move.setTurn(angle);
 
-                // Если цель перед нами, ...
-                if (StrictMath.abs(angle) < game.getStaffSector() / 2.0D) {
-                    // ... то атакуем.
-                    move.setAction(ActionType.MAGIC_MISSILE);
-                    move.setCastAngle(angle);
-                    move.setMinCastDistance(distance - nearestTarget.getRadius() + game.getMagicMissileRadius());
-                }
-
-                return;
+            // Если цель перед нами, ...
+            if (StrictMath.abs(angle) < game.getStaffSector() / 2.0D) {
+                // ... то атакуем.
+                move.setAction(ActionType.MAGIC_MISSILE);
+                move.setCastAngle(angle);
+                move.setMinCastDistance(distance - nearestTarget.getRadius() + game.getMagicMissileRadius());
             }
+
+            return;
         }
 
         // Если нет других действий, просто продвигаемся вперёд.
@@ -237,11 +237,18 @@ public final class MyStrategy implements Strategy {
      * Находим ближайшую цель для атаки, независимо от её типа и других характеристик.
      */
     private LivingUnit getNearestTarget() {
-        List<LivingUnit> targets = new ArrayList<>();
-        targets.addAll(Arrays.asList(world.getBuildings()));
-        targets.addAll(Arrays.asList(world.getWizards()));
-        targets.addAll(Arrays.asList(world.getMinions()));
+        LivingUnit nearestWizard = getNearestLivingTarget(world.getWizards());
 
+        if (nearestWizard != null) return nearestWizard;
+
+        LivingUnit nearestBuilding = getNearestLivingTarget(world.getBuildings());
+
+        if (nearestBuilding != null) return nearestBuilding;
+
+        else return getNearestLivingTarget(world.getMinions());
+    }
+
+    private LivingUnit getNearestLivingTarget(LivingUnit[] targets) {
         LivingUnit nearestTarget = null;
         double nearestTargetDistance = Double.MAX_VALUE;
 
@@ -252,7 +259,7 @@ public final class MyStrategy implements Strategy {
 
             double distance = self.getDistanceTo(target);
 
-            if (distance < nearestTargetDistance) {
+            if (distance < nearestTargetDistance && distance < self.getCastRange()) {
                 nearestTarget = target;
                 nearestTargetDistance = distance;
             }
