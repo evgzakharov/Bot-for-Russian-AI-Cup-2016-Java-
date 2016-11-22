@@ -1,8 +1,6 @@
 import model.*;
 
-import java.util.EnumMap;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 
 public final class MyStrategy implements Strategy {
     private static final double WAYPOINT_RADIUS = 100.0D;
@@ -51,14 +49,14 @@ public final class MyStrategy implements Strategy {
             return;
         }
 
-        LivingUnit nearestTarget = getNearestTarget();
+        Optional<LivingUnit> nearestTarget = getNearestTarget();
 
         // Если видим противника ...
-        if (nearestTarget != null) {
-            double distance = self.getDistanceTo(nearestTarget);
+        if (nearestTarget.isPresent()) {
+            double distance = self.getDistanceTo(nearestTarget.get());
 
             // ... и он в пределах досягаемости наших заклинаний, ...
-            double angle = self.getAngleTo(nearestTarget);
+            double angle = self.getAngleTo(nearestTarget.get());
 
             // ... то поворачиваемся к цели.
             move.setTurn(angle);
@@ -68,7 +66,7 @@ public final class MyStrategy implements Strategy {
                 // ... то атакуем.
                 move.setAction(ActionType.MAGIC_MISSILE);
                 move.setCastAngle(angle);
-                move.setMinCastDistance(distance - nearestTarget.getRadius() + game.getMagicMissileRadius());
+                move.setMinCastDistance(distance - nearestTarget.get().getRadius() + game.getMagicMissileRadius());
             }
 
             return;
@@ -236,21 +234,20 @@ public final class MyStrategy implements Strategy {
     /**
      * Находим ближайшую цель для атаки, независимо от её типа и других характеристик.
      */
-    private LivingUnit getNearestTarget() {
-        LivingUnit nearestWizard = getNearestLivingTarget(world.getWizards());
+    private Optional<LivingUnit> getNearestTarget() {
+        Optional<LivingUnit> nearestWizard = getNearestLivingTarget(world.getWizards());
 
-        if (nearestWizard != null) return nearestWizard;
+        if (nearestWizard.isPresent()) return nearestWizard;
 
-        LivingUnit nearestBuilding = getNearestLivingTarget(world.getBuildings());
+        Optional<LivingUnit> nearestBuilding = getNearestLivingTarget(world.getBuildings());
 
-        if (nearestBuilding != null) return nearestBuilding;
+        if (nearestBuilding.isPresent()) return nearestBuilding;
 
         else return getNearestLivingTarget(world.getMinions());
     }
 
-    private LivingUnit getNearestLivingTarget(LivingUnit[] targets) {
-        LivingUnit nearestTarget = null;
-        double nearestTargetDistance = Double.MAX_VALUE;
+    private Optional<LivingUnit> getNearestLivingTarget(LivingUnit[] targets) {
+        List<LivingUnit> nearestTargets = new ArrayList<>();
 
         for (LivingUnit target : targets) {
             if (target.getFaction() == Faction.NEUTRAL || target.getFaction() == self.getFaction()) {
@@ -259,13 +256,16 @@ public final class MyStrategy implements Strategy {
 
             double distance = self.getDistanceTo(target);
 
-            if (distance < nearestTargetDistance && distance < self.getCastRange()) {
-                nearestTarget = target;
-                nearestTargetDistance = distance;
+            if (distance < self.getCastRange()) {
+                nearestTargets.add(target);
             }
         }
 
-        return nearestTarget;
+        Optional<LivingUnit> minLifeLivingUnit = nearestTargets
+                .stream()
+                .min((o1, o2) -> Integer.compare(o2.getLife(), o1.getLife()));
+
+        return minLifeLivingUnit;
     }
 
     /**
