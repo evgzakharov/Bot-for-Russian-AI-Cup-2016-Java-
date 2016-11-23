@@ -1,6 +1,7 @@
 import model.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public final class MyStrategy implements Strategy {
     private static final double WAYPOINT_RADIUS = 100.0D;
@@ -10,6 +11,8 @@ public final class MyStrategy implements Strategy {
     private static final double LOW_MINION_FACTOR = 0.35D;
 
     private static final double MIN_DISTANCE_TO_ENEMY = 50D;
+
+    private static final double MIN_CLOSEST_DISTANCE = 5D;
 
     /**
      * Ключевые точки для каждой линии, позволяющие упростить управление перемещением волшебника.
@@ -226,10 +229,21 @@ public final class MyStrategy implements Strategy {
      */
     private void goTo(Point2D point) {
         double angle = self.getAngleTo(point.getX(), point.getY());
-
         move.setTurn(angle);
 
         if (StrictMath.abs(angle) < game.getStaffSector() / 4.0D) {
+            move.setSpeed(game.getWizardForwardSpeed());
+        }
+
+        Optional<LivingUnit> nearestUnit = getAllUnits(true).stream()
+                .min(Comparator.comparingDouble(self::getDistanceTo));
+
+        if (nearestUnit.isPresent() &&
+                (self.getDistanceTo(nearestUnit.get()) - self.getRadius() - nearestUnit.get().getRadius()) <= MIN_CLOSEST_DISTANCE) {
+            double angleToUnit = self.getAngleTo(nearestUnit.get());
+
+            move.setStrafeSpeed((angleToUnit >= 0) ? game.getWizardStrafeSpeed() : -game.getWizardStrafeSpeed());
+            move.setTurn(-angleToUnit);
             move.setSpeed(game.getWizardForwardSpeed());
         }
     }
@@ -243,7 +257,7 @@ public final class MyStrategy implements Strategy {
             return true;
         }
 
-        List<LivingUnit> units = getAllUnits();
+        List<LivingUnit> units = getAllUnits(false);
 
         Optional<LivingUnit> nearestEnemy = units.stream()
                 .filter(this::isEnemy)
@@ -263,11 +277,20 @@ public final class MyStrategy implements Strategy {
         return distanceToEnemy <= distanceFromEnemyToFriend || distanceToEnemy < MIN_DISTANCE_TO_ENEMY;
     }
 
-    private List<LivingUnit> getAllUnits() {
+    private List<LivingUnit> getAllUnits(boolean withTrees) {
         List<LivingUnit> units = new ArrayList<>();
-        units.addAll(Arrays.asList(world.getWizards()));
+
+        List<Wizard> wizards = Arrays.stream(world.getWizards())
+                .filter(wizard -> !wizard.isMe())
+                .collect(Collectors.toList());
+
+        units.addAll(wizards);
         units.addAll(Arrays.asList(world.getBuildings()));
         units.addAll(Arrays.asList(world.getMinions()));
+
+        if (withTrees)
+            units.addAll(Arrays.asList(world.getTrees()));
+
         return units;
     }
 
