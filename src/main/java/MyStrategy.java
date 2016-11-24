@@ -3,6 +3,8 @@ import model.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static java.lang.StrictMath.*;
+
 public final class MyStrategy implements Strategy {
     private static final double WAYPOINT_RADIUS = 100.0D;
 
@@ -46,35 +48,43 @@ public final class MyStrategy implements Strategy {
         initializeStrategy(self, game);
         initializeTick(self, world, game, move);
 
-        move.setStrafeSpeed(random.nextBoolean() ? game.getWizardStrafeSpeed() : -game.getWizardStrafeSpeed());
-
-        if (isNeedToMoveBack()) {
+        if (self.getLife() < self.getMaxLife() * LOW_HP_FACTOR) {
             goTo(getPreviousWaypoint());
             return;
         }
 
-        // Если видим противника ...
         Optional<LivingUnit> nearestTarget = getNearestEnemy();
-        if (nearestTarget.isPresent()) {
-            shootToTarget(self, game, move, nearestTarget.get());
-            return;
+        if (isNeedToMoveBack()) {
+            goWithoutTurn(getPreviousWaypoint());
+
+            if (nearestTarget.isPresent()) {
+                shootToTarget(self, game, move, nearestTarget.get(), false);
+                return;
+            }
+        } else {
+            if (nearestTarget.isPresent()) {
+                shootToTarget(self, game, move, nearestTarget.get(), true);
+                return;
+            }
         }
 
-        // Если нет других действий, просто продвигаемся вперёд.
+        // shoot forest, if can
+
         goTo(getNextWaypoint());
     }
 
-    private void shootToTarget(Wizard self, Game game, Move move, LivingUnit nearestTarget) {
+    private void shootToTarget(Wizard self, Game game, Move move, LivingUnit nearestTarget, boolean withTurn) {
         double distance = self.getDistanceTo(nearestTarget);
 
         // ... и он в пределах досягаемости наших заклинаний, ...
         double angle = self.getAngleTo(nearestTarget);
 
         // ... то поворачиваемся к цели.
-        move.setTurn(angle);
+        if (withTurn)
+            move.setTurn(angle);
 
         // Если цель перед нами, ...
-        if (StrictMath.abs(angle) < game.getStaffSector() / 2.0D) {
+        if (abs(angle) < game.getStaffSector() / 2.0D) {
             // ... то атакуем.
             move.setAction(ActionType.MAGIC_MISSILE);
             move.setCastAngle(angle);
@@ -231,7 +241,7 @@ public final class MyStrategy implements Strategy {
         double angle = self.getAngleTo(point.getX(), point.getY());
         move.setTurn(angle);
 
-        if (StrictMath.abs(angle) < game.getStaffSector() / 4.0D) {
+        if (abs(angle) < game.getStaffSector() / 4.0D) {
             move.setSpeed(game.getWizardForwardSpeed());
         }
 
@@ -248,15 +258,25 @@ public final class MyStrategy implements Strategy {
         }
     }
 
+    private void goWithoutTurn(Point2D point) {
+        double diffAngle = self.getAngleTo(point.getX(), point.getY());
+
+        double backCoef = cos(diffAngle);
+        double strickCoef = sin(diffAngle);
+
+        if (abs(diffAngle) > PI / 2) {
+            move.setSpeed(game.getWizardBackwardSpeed() * backCoef);
+        } else {
+            move.setSpeed(game.getWizardForwardSpeed() * backCoef);
+        }
+        move.setStrafeSpeed(game.getWizardStrafeSpeed() * strickCoef);
+    }
+
     /**
      * Находим ближайшую цель для атаки, независимо от её типа и других характеристик.
      */
     @SuppressWarnings("OptionalGetWithoutIsPresent")
     private Boolean isNeedToMoveBack() {
-        if (self.getLife() < self.getMaxLife() * LOW_HP_FACTOR) {
-            return true;
-        }
-
         List<LivingUnit> units = getAllUnits(false);
 
         Optional<LivingUnit> nearestEnemy = units.stream()
