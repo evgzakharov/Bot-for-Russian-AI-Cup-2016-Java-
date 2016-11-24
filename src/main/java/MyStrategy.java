@@ -53,6 +53,8 @@ public final class MyStrategy implements Strategy {
             return;
         }
 
+        move.setStrafeSpeed(random.nextBoolean() ? game.getWizardStrafeSpeed() : -game.getWizardStrafeSpeed());
+
         Optional<LivingUnit> nearestTarget = getNearestEnemy();
         if (isNeedToMoveBack()) {
             goWithoutTurn(getPreviousWaypoint());
@@ -248,7 +250,9 @@ public final class MyStrategy implements Strategy {
         Optional<LivingUnit> nearestUnit = getAllUnits(true).stream()
                 .min(Comparator.comparingDouble(self::getDistanceTo));
 
-        if (nearestUnit.isPresent() &&
+        if (nearestUnit.isPresent() && nearestUnit.get().getFaction() == Faction.OTHER && abs(self.getAngleTo(nearestUnit.get())) <= game.getStaffSector()) {
+            move.setAction(ActionType.STAFF);
+        } else if (nearestUnit.isPresent() &&
                 (self.getDistanceTo(nearestUnit.get()) - self.getRadius() - nearestUnit.get().getRadius()) <= MIN_CLOSEST_DISTANCE) {
             double angleToUnit = self.getAngleTo(nearestUnit.get());
 
@@ -284,6 +288,9 @@ public final class MyStrategy implements Strategy {
                 .min(Comparator.comparingDouble(self::getDistanceTo));
 
         if (!nearestEnemy.isPresent()) return false;
+
+        if (nearestEnemy.get() instanceof Wizard)
+            return self.getLife() * (1 + LOW_HP_FACTOR / 2) < nearestEnemy.get().getLife();
 
         LivingUnit nearestFrendToEnemy = units.stream()
                 .filter(unit -> self.getFaction() == unit.getFaction() && !unit.equals(self))
