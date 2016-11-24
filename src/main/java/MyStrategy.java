@@ -34,6 +34,9 @@ public final class MyStrategy implements Strategy {
     private Game game;
     private Move move;
 
+    private Point2D previousMovingPoint;
+    private List<Point2D> findWay;
+
     /**
      * Основной метод стратегии, осуществляющий управление волшебником.
      * Вызывается каждый тик для каждого волшебника.
@@ -60,7 +63,7 @@ public final class MyStrategy implements Strategy {
             goWithoutTurn(getPreviousWaypoint());
 
             if (nearestTarget.isPresent()) {
-                shootToTarget(self, game, move, nearestTarget.get(), false);
+                shootToTarget(self, game, move, nearestTarget.get(), true);
                 return;
             }
         } else {
@@ -240,7 +243,9 @@ public final class MyStrategy implements Strategy {
      * Простейший способ перемещения волшебника.
      */
     private void goTo(Point2D point) {
-        double angle = self.getAngleTo(point.getX(), point.getY());
+        Point2D correctedPoint = correctPoint(point);
+
+        double angle = self.getAngleTo(correctedPoint.getX(), correctedPoint.getY());
         move.setTurn(angle);
 
         if (abs(angle) < game.getStaffSector() / 4.0D) {
@@ -263,7 +268,9 @@ public final class MyStrategy implements Strategy {
     }
 
     private void goWithoutTurn(Point2D point) {
-        double diffAngle = self.getAngleTo(point.getX(), point.getY());
+        Point2D correctedPoint = correctPoint(point);
+
+        double diffAngle = self.getAngleTo(correctedPoint.getX(), correctedPoint.getY());
 
         double backCoef = cos(diffAngle);
         double strickCoef = sin(diffAngle);
@@ -274,6 +281,29 @@ public final class MyStrategy implements Strategy {
             move.setSpeed(game.getWizardForwardSpeed() * backCoef);
         }
         move.setStrafeSpeed(game.getWizardStrafeSpeed() * strickCoef);
+    }
+
+    private Point2D correctPoint(Point2D point2D) {
+        if (point2D.equals(previousMovingPoint) && findWay != null) {
+            previousMovingPoint = point2D;
+            return getMovingPoint();
+        } else {
+            previousMovingPoint = point2D;
+
+            WayFinder wayFinder = new WayFinder(self, world, game, game.getWizardRadius());
+            List<Point2D> way = wayFinder.findWay(point2D);
+
+            if (way != null && way.size() > 0) {
+                findWay = way;
+                return getMovingPoint();
+            }
+
+            return point2D;
+        }
+    }
+
+    private Point2D getMovingPoint() {
+        return findWay.get(findWay.size() - 1);
     }
 
     /**
@@ -368,33 +398,5 @@ public final class MyStrategy implements Strategy {
     /**
      * Вспомогательный класс для хранения позиций на карте.
      */
-    private static final class Point2D {
-        private final double x;
-        private final double y;
 
-        private Point2D(double x, double y) {
-            this.x = x;
-            this.y = y;
-        }
-
-        public double getX() {
-            return x;
-        }
-
-        public double getY() {
-            return y;
-        }
-
-        public double getDistanceTo(double x, double y) {
-            return StrictMath.hypot(this.x - x, this.y - y);
-        }
-
-        public double getDistanceTo(Point2D point) {
-            return getDistanceTo(point.x, point.y);
-        }
-
-        public double getDistanceTo(Unit unit) {
-            return getDistanceTo(unit.getX(), unit.getY());
-        }
-    }
 }
