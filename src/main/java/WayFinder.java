@@ -13,7 +13,7 @@ public class WayFinder {
 
     private double matrixStep;
 
-    private static final double MAX_RANGE = 100;
+    private static final double MAX_RANGE = 90;
     private static final double MIN_CLOSEST_RANGE = 5;
 
     public WayFinder(Wizard wizard, World world, Game game) {
