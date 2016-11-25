@@ -283,7 +283,6 @@ public final class MyStrategy implements Strategy {
     private Boolean isNeedToMoveBack() {
 
         long toCloseMinions = gameHelper.getAllMinions(true, true).stream()
-                .filter(unit -> gameHelper.isEnemy(self.getFaction(), unit))
                 .filter(minion -> {
                     if (minion.getType() == MinionType.FETISH_BLOWDART)
                         return self.getDistanceTo(minion) <= game.getFetishBlowdartAttackRange() * 1.1;
@@ -333,6 +332,7 @@ public final class MyStrategy implements Strategy {
 
                 Optional<LivingUnit> nearestFriendToBuilding = gameHelper.getAllUnits(false, false, true).stream()
                         .filter(unit -> !gameHelper.isEnemy(self.getFaction(), unit))
+                        .filter(unit -> unit.getLife() >= unit.getMaxLife() * getLowHpFactorToUnit(unit))
                         .min(Comparator.comparingDouble(nearestBuilding.get()::getDistanceTo));
 
                 return nearestFriendToBuilding
