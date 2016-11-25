@@ -303,7 +303,12 @@ public final class MyStrategy implements Strategy {
     }
 
     private Point2D getMovingPoint() {
-        return findWay.get(findWay.size() - 1);
+        Point2D newMovingPoint = findWay.get(0);
+
+        if (self.getDistanceTo(newMovingPoint.getX(), newMovingPoint.getY()) < MIN_CLOSEST_DISTANCE)
+            findWay.remove(0);
+
+        return findWay.get(0);
     }
 
     /**

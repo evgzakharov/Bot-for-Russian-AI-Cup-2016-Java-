@@ -25,8 +25,7 @@ public class WayFinder {
     }
 
     public List<Point2D> findWay(Point2D point) {
-        Matrix matrixStart = new Matrix(new Point2D(wizard.getX(), wizard.getY()));
-        matrixStart.setFree(true);
+        Matrix matrixStart = new Matrix(new Point2D(wizard.getX(), wizard.getY()), null);
         matrixStart.setPathCount(0);
 
         List<Point2D> findLine = growMatrix(Collections.singletonList(matrixStart), point);
@@ -38,34 +37,31 @@ public class WayFinder {
         List<Matrix> newStepPoints = new ArrayList<>();
 
         for (Matrix stepMatrix : stepPoints) {
-            for (WayX wayX : WayX.values()) {
-                for (WayY wayY : WayY.values()) {
-                    if (wayX == WayX.NONE && wayY == WayY.NONE) continue;
+            for (short diffX = -1; diffX <= 1; diffX++) {
+                for (short diffY = -1; diffY <= 1; diffY++) {
+                    if (diffX == 0 && diffY == 0) continue;
 
-                    WayPoint newWayPoint = new WayPoint(wayX, wayY);
-                    if (stepMatrix.matrixExist(newWayPoint)) continue;
+                    MatrixPoint matrixPoint = new MatrixPoint(diffX, diffY);
+                    if (stepMatrix.getMatrixPoints().contains(matrixPoint))
+                        continue;
 
-                    double newX = stepMatrix.getPoint().getX() + matrixStep * wayX.getDiff();
-                    double newY = stepMatrix.getPoint().getY() + matrixStep * wayY.getDiff();
+                    double newX = stepMatrix.getPoint().getX() + matrixStep * diffX;
+                    double newY = stepMatrix.getPoint().getY() + matrixStep * diffY;
                     Point2D newPoint = new Point2D(newX, newY);
 
                     if (!checkPointPosition(newPoint, findingWayPoint)) continue;
 
-                    Matrix newMatrix = new Matrix(newPoint);
+                    Matrix newMatrix = new Matrix(newPoint, stepMatrix);
                     newMatrix.setPathCount(stepMatrix.getPathCount() + 1);
 
-                    newMatrix.setFree(true); //TODO add checking
+                    //TODO: checking free location
                     newStepPoints.add(newMatrix);
-
-                    stepMatrix.addMatrix(new WayPoint(wayX, wayY), newMatrix);
-                    newMatrix.addMatrix(reverse(new WayPoint(wayX, wayY)), stepMatrix);
+                    newMatrix.getMatrixPoints().add(matrixPoint);
 
                     if (newPoint.getDistanceTo(findingWayPoint) < matrixStep)
                         return findLineFromMatrix(stepMatrix);
                 }
             }
-
-            fixRelations(stepMatrix);
         }
 
         if (!newStepPoints.isEmpty()) {
@@ -75,28 +71,16 @@ public class WayFinder {
         return Collections.emptyList();
     }
 
-    private void fixRelations(Matrix stepMatrix) {
-
-    }
-
-    private WayPoint reverse(WayPoint wayPoint) {
-        return new WayPoint(WayX.fromValue(wayPoint.getWayX().getDiff() * (-1)), WayY.fromValue(wayPoint.getWayY().getDiff() * (-1)));
-    }
-
     private List<Point2D> findLineFromMatrix(Matrix stepMatrix) {
         List<Point2D> findPoints = new ArrayList<>();
 
         int currentCount = stepMatrix.getPathCount();
         Matrix currentMatrix = stepMatrix;
         while (currentCount > 0) {
-            findPoints.add(currentMatrix.getPoint());
+            findPoints.add(findPoints.size(), currentMatrix.getPoint());
             currentCount -= 1;
 
-            final int findCountValue = currentCount;
-            currentMatrix = currentMatrix.getNearestMatrix().values().stream()
-                    .filter(matrix -> matrix.getPathCount() == findCountValue)
-                    .findFirst()
-                    .orElse(null);
+            currentMatrix = currentMatrix.getPreviousMatrix();
         }
 
         return findPoints;

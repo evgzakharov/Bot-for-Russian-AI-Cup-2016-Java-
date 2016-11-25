@@ -1,42 +1,24 @@
-import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class Matrix {
 
-    private Map<WayPoint, Matrix> nearestMatrix = new HashMap<>();
-
     private int pathCount = 0;
-    private boolean isFree = true;
 
     private Point2D point;
+    private Matrix previousMatrix;
+    private Set<MatrixPoint> matrixPoints;
 
-    public Matrix(Point2D point) {
+    public Matrix(Point2D point, Matrix previousMatrix) {
         this.point = point;
-    }
+        this.previousMatrix = previousMatrix;
 
-    public Point2D getPoint() {
-        return point;
-    }
-
-    public void addMatrix(WayPoint wayPoint, Matrix matrix) {
-        nearestMatrix.put(wayPoint, matrix);
-    }
-
-    public boolean matrixExist(WayPoint wayPoint) {
-        if (nearestMatrix.containsKey(wayPoint)) return true;
-
-        return nearestMatrix.entrySet().stream()
-                .anyMatch(entry -> checkPosition(entry, wayPoint));
-    }
-
-    private boolean checkPosition(Map.Entry<WayPoint, Matrix> entry, WayPoint wayPoint) {
-        WayPoint parentWayPoint = entry.getKey();
-
-        return //FIXME
-    }
-
-    public Map<WayPoint, Matrix> getNearestMatrix() {
-        return nearestMatrix;
+        if (previousMatrix != null)
+            this.matrixPoints = previousMatrix.getMatrixPoints();
+        else
+            this.matrixPoints = new HashSet<>();
     }
 
     public int getPathCount() {
@@ -47,11 +29,15 @@ public class Matrix {
         this.pathCount = pathCount;
     }
 
-    public boolean isFree() {
-        return isFree;
+    public Point2D getPoint() {
+        return point;
     }
 
-    public void setFree(boolean free) {
-        isFree = free;
+    public Matrix getPreviousMatrix() {
+        return previousMatrix;
+    }
+
+    public Set<MatrixPoint> getMatrixPoints() {
+        return matrixPoints;
     }
 }
