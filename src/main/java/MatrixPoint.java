@@ -5,6 +5,11 @@ public class MatrixPoint {
     private final short diffX;
     private final short diffY;
 
+    public MatrixPoint() {
+        this.diffX = 0;
+        this.diffY = 0;
+    }
+
     public MatrixPoint(short diffX, short diffY) {
         this.diffX = diffX;
         this.diffY = diffY;

@@ -16,6 +16,8 @@ public final class MyStrategy implements Strategy {
 
     private static final double MIN_CLOSEST_DISTANCE = 5D;
 
+    private static final double MAX_DISTANCE = 150D;
+
     /**
      * Ключевые точки для каждой линии, позволяющие упростить управление перемещением волшебника.
      * <p>
@@ -33,9 +35,8 @@ public final class MyStrategy implements Strategy {
     private World world;
     private Game game;
     private Move move;
+    private GameHelper gameHelper;
 
-    private Point2D previousMovingPoint;
-    private List<Point2D> findWay;
 
     /**
      * Основной метод стратегии, осуществляющий управление волшебником.
@@ -55,8 +56,6 @@ public final class MyStrategy implements Strategy {
             goTo(getPreviousWaypoint());
             return;
         }
-
-        move.setStrafeSpeed(random.nextBoolean() ? game.getWizardStrafeSpeed() : -game.getWizardStrafeSpeed());
 
         Optional<LivingUnit> nearestTarget = getNearestEnemy();
         if (isNeedToMoveBack()) {
@@ -188,6 +187,7 @@ public final class MyStrategy implements Strategy {
         this.world = world;
         this.game = game;
         this.move = move;
+        this.gameHelper = new GameHelper(world, game);
     }
 
     /**
@@ -248,23 +248,7 @@ public final class MyStrategy implements Strategy {
         double angle = self.getAngleTo(correctedPoint.getX(), correctedPoint.getY());
         move.setTurn(angle);
 
-        if (abs(angle) < game.getStaffSector() / 4.0D) {
-            move.setSpeed(game.getWizardForwardSpeed());
-        }
-
-        Optional<LivingUnit> nearestUnit = getAllUnits(true).stream()
-                .min(Comparator.comparingDouble(self::getDistanceTo));
-
-        if (nearestUnit.isPresent() && nearestUnit.get().getFaction() == Faction.OTHER && abs(self.getAngleTo(nearestUnit.get())) <= game.getStaffSector()) {
-            move.setAction(ActionType.STAFF);
-        } else if (nearestUnit.isPresent() &&
-                (self.getDistanceTo(nearestUnit.get()) - self.getRadius() - nearestUnit.get().getRadius()) <= MIN_CLOSEST_DISTANCE) {
-            double angleToUnit = self.getAngleTo(nearestUnit.get());
-
-            move.setStrafeSpeed((angleToUnit >= 0) ? game.getWizardStrafeSpeed() : -game.getWizardStrafeSpeed());
-            move.setTurn(-angleToUnit);
-            move.setSpeed(game.getWizardForwardSpeed());
-        }
+        goWithoutTurn(point);
     }
 
     private void goWithoutTurn(Point2D point) {
@@ -284,31 +268,14 @@ public final class MyStrategy implements Strategy {
     }
 
     private Point2D correctPoint(Point2D point2D) {
-        if (point2D.equals(previousMovingPoint) && findWay != null) {
-            previousMovingPoint = point2D;
-            return getMovingPoint();
-        } else {
-            previousMovingPoint = point2D;
+        WayFinder wayFinder = new WayFinder(self, world, game);
+        List<Point2D> way = wayFinder.findWay(point2D);
 
-            WayFinder wayFinder = new WayFinder(self, world, game, game.getWizardRadius());
-            List<Point2D> way = wayFinder.findWay(point2D);
-
-            if (way != null && way.size() > 0) {
-                findWay = way;
-                return getMovingPoint();
-            }
-
-            return point2D;
+        if (way != null && way.size() > 0) {
+            return way.get(0);
         }
-    }
 
-    private Point2D getMovingPoint() {
-        Point2D newMovingPoint = findWay.get(0);
-
-        if (self.getDistanceTo(newMovingPoint.getX(), newMovingPoint.getY()) < MIN_CLOSEST_DISTANCE)
-            findWay.remove(0);
-
-        return findWay.get(0);
+        return point2D;
     }
 
     /**
@@ -316,10 +283,12 @@ public final class MyStrategy implements Strategy {
      */
     @SuppressWarnings("OptionalGetWithoutIsPresent")
     private Boolean isNeedToMoveBack() {
-        List<LivingUnit> units = getAllUnits(false);
+        List<LivingUnit> units = gameHelper.getAllUnits(false);
 
         Optional<LivingUnit> nearestEnemy = units.stream()
-                .filter(this::isEnemy)
+                .filter(unit -> gameHelper.isEnemy(self.getFaction(), unit))
+                .filter(unit -> abs(unit.getX() - self.getX()) < MAX_DISTANCE)
+                .filter(unit -> abs(unit.getY() - self.getY()) < MAX_DISTANCE)
                 .min(Comparator.comparingDouble(self::getDistanceTo));
 
         if (!nearestEnemy.isPresent()) return false;
@@ -327,37 +296,18 @@ public final class MyStrategy implements Strategy {
         if (nearestEnemy.get() instanceof Wizard)
             return self.getLife() * (1 + LOW_HP_FACTOR / 2) < nearestEnemy.get().getLife();
 
-        LivingUnit nearestFrendToEnemy = units.stream()
+        Optional<LivingUnit> nearestFrendToEnemy = units.stream()
                 .filter(unit -> self.getFaction() == unit.getFaction() && !unit.equals(self))
+                .filter(unit -> abs(unit.getX() - nearestEnemy.get().getX()) < MAX_DISTANCE)
+                .filter(unit -> abs(unit.getY() - nearestEnemy.get().getY()) < MAX_DISTANCE)
                 .filter(unit -> unit.getLife() > unit.getMaxLife() * getLowHpFactorToUnit(unit))
-                .min(Comparator.comparingDouble(nearestEnemy.get()::getDistanceTo))
-                .get();
+                .min(Comparator.comparingDouble(nearestEnemy.get()::getDistanceTo));
 
+        if (!nearestFrendToEnemy.isPresent()) return true;
 
         double distanceToEnemy = self.getDistanceTo(nearestEnemy.get());
-        double distanceFromEnemyToFriend = nearestFrendToEnemy.getDistanceTo(nearestEnemy.get());
+        double distanceFromEnemyToFriend = nearestFrendToEnemy.get().getDistanceTo(nearestEnemy.get());
         return distanceToEnemy <= distanceFromEnemyToFriend || distanceToEnemy < MIN_DISTANCE_TO_ENEMY;
-    }
-
-    private List<LivingUnit> getAllUnits(boolean withTrees) {
-        List<LivingUnit> units = new ArrayList<>();
-
-        List<Wizard> wizards = Arrays.stream(world.getWizards())
-                .filter(wizard -> !wizard.isMe())
-                .collect(Collectors.toList());
-
-        units.addAll(wizards);
-        units.addAll(Arrays.asList(world.getBuildings()));
-        units.addAll(Arrays.asList(world.getMinions()));
-
-        if (withTrees)
-            units.addAll(Arrays.asList(world.getTrees()));
-
-        return units;
-    }
-
-    private boolean isEnemy(LivingUnit unit) {
-        return self.getFaction() != unit.getFaction() && unit.getFaction() != Faction.NEUTRAL;
     }
 
     private double getLowHpFactorToUnit(LivingUnit unit) {
@@ -384,7 +334,7 @@ public final class MyStrategy implements Strategy {
         List<LivingUnit> nearestTargets = new ArrayList<>();
 
         for (LivingUnit target : targets) {
-            if (!isEnemy(target)) {
+            if (!gameHelper.isEnemy(self.getFaction(), target)) {
                 continue;
             }
 

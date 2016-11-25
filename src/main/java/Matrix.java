@@ -1,31 +1,34 @@
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class Matrix {
 
-    private int pathCount = 0;
+    private float pathCount = 0;
 
     private Point2D point;
+    private MatrixPoint matrixPoint;
     private Matrix previousMatrix;
-    private Set<MatrixPoint> matrixPoints;
+    private Map<MatrixPoint, Matrix> matrixPoints;
 
-    public Matrix(Point2D point, Matrix previousMatrix) {
+    public Matrix(Point2D point, MatrixPoint matrixPoint, Matrix previousMatrix) {
         this.point = point;
+        this.matrixPoint = matrixPoint;
         this.previousMatrix = previousMatrix;
 
         if (previousMatrix != null)
             this.matrixPoints = previousMatrix.getMatrixPoints();
         else
-            this.matrixPoints = new HashSet<>();
+            this.matrixPoints = new HashMap<>();
     }
 
-    public int getPathCount() {
+    public MatrixPoint getMatrixPoint() {
+        return matrixPoint;
+    }
+
+    public float getPathCount() {
         return pathCount;
     }
 
-    public void setPathCount(int pathCount) {
+    public void setPathCount(float pathCount) {
         this.pathCount = pathCount;
     }
 
@@ -37,7 +40,7 @@ public class Matrix {
         return previousMatrix;
     }
 
-    public Set<MatrixPoint> getMatrixPoints() {
+    public Map<MatrixPoint, Matrix> getMatrixPoints() {
         return matrixPoints;
     }
 }
