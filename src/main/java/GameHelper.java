@@ -18,11 +18,7 @@ public class GameHelper {
     public List<LivingUnit> getAllUnits(boolean withTrees) {
         List<LivingUnit> units = new ArrayList<>();
 
-        List<Wizard> wizards = Arrays.stream(world.getWizards())
-                .filter(wizard -> !wizard.isMe())
-                .collect(Collectors.toList());
-
-        units.addAll(wizards);
+        units.addAll(getAllWizards());
         units.addAll(Arrays.asList(world.getBuildings()));
         units.addAll(Arrays.asList(world.getMinions()));
 
@@ -30,6 +26,12 @@ public class GameHelper {
             units.addAll(Arrays.asList(world.getTrees()));
 
         return units;
+    }
+
+    public List<Wizard> getAllWizards() {
+        return Arrays.stream(world.getWizards())
+                .filter(wizard -> !wizard.isMe())
+                .collect(Collectors.toList());
     }
 
     public boolean isEnemy(Faction self, LivingUnit unit) {

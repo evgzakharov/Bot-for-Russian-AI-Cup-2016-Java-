@@ -24,18 +24,18 @@ public class WayFinder {
         this.gameHelper = new GameHelper(world, game);
     }
 
-    public List<Point2D> findWay(Point2D point) {
+    public List<Point2D> findWay(Point2D point, Boolean withEnemyChecking) {
         Matrix matrixStart = new Matrix(new Point2D(wizard.getX(), wizard.getY()), new MatrixPoint(), null);
         matrixStart.setPathCount(0);
 
         List<LivingUnit> allUnits = gameHelper.getAllUnits(true);
 
-        List<Point2D> findLine = growMatrix(Collections.singletonList(matrixStart), point, allUnits);
+        List<Point2D> findLine = growMatrix(Collections.singletonList(matrixStart), point, allUnits, withEnemyChecking);
 
         return findLine;
     }
 
-    private List<Point2D> growMatrix(List<Matrix> stepPoints, Point2D findingWayPoint, List<LivingUnit> allUnits) {
+    private List<Point2D> growMatrix(List<Matrix> stepPoints, Point2D findingWayPoint, List<LivingUnit> allUnits, Boolean withEnemyChecking) {
         List<Matrix> newStepPoints = new ArrayList<>();
 
         Matrix lastMatrix = null;
@@ -64,7 +64,7 @@ public class WayFinder {
                     Matrix newMatrix = new Matrix(newPoint, matrixPoint, stepMatrix);
                     newMatrix.setPathCount(newPathCount);
 
-                    if (!freeLocation(newPoint, allUnits)) continue;
+                    if (!freeLocation(newPoint, allUnits, withEnemyChecking)) continue;
 
                     newStepPoints.add(newMatrix);
                     newMatrix.getMatrixPoints().put(matrixPoint, newMatrix);
@@ -77,7 +77,7 @@ public class WayFinder {
         }
 
         if (!newStepPoints.isEmpty()) {
-            List<Point2D> point2DS = growMatrix(newStepPoints, findingWayPoint, allUnits);
+            List<Point2D> point2DS = growMatrix(newStepPoints, findingWayPoint, allUnits, withEnemyChecking);
             if (point2DS.isEmpty()) {
                 if (stepPoints.size() == 1 && lastMatrix != null && lastMatrix.getMatrixPoints().size() > 0) {
                     Optional<Matrix> nearestMatrix = lastMatrix.getMatrixPoints().values().stream()
@@ -92,13 +92,26 @@ public class WayFinder {
         return Collections.emptyList();
     }
 
-    private boolean freeLocation(Point2D newPoint, List<LivingUnit> allUnits) {
+    private boolean freeLocation(Point2D newPoint, List<LivingUnit> allUnits, Boolean withEnemyChecking) {
         return allUnits.stream()
                 .filter(unit -> abs(unit.getX() - newPoint.getX()) < MAX_RANGE)
                 .filter(unit -> abs(unit.getY() - newPoint.getY()) < MAX_RANGE)
-                .noneMatch(unit -> newPoint.getDistanceTo(unit) <= unit.getRadius() + wizard.getRadius() + MIN_CLOSEST_RANGE);
+                .noneMatch(unit -> newPoint.getDistanceTo(unit) <= getUnitDistance(unit, withEnemyChecking) + wizard.getRadius() + MIN_CLOSEST_RANGE);
     }
 
+    private double getUnitDistance(LivingUnit unit, Boolean withEnemyChecking) {
+        if (!withEnemyChecking) return unit.getRadius();
+
+        if (unit instanceof Minion) {
+            if (((Minion) unit).getType() == MinionType.ORC_WOODCUTTER)
+                return game.getOrcWoodcutterAttackRange();
+
+            if (((Minion) unit).getType() == MinionType.FETISH_BLOWDART)
+                return game.getFetishBlowdartAttackRange();
+        }
+
+        return unit.getRadius();
+    }
 
     private List<Point2D> findLineFromMatrix(Matrix stepMatrix) {
         List<Point2D> findPoints = new ArrayList<>();

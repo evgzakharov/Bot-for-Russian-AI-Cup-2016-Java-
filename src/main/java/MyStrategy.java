@@ -16,8 +16,6 @@ public final class MyStrategy implements Strategy {
 
     private static final double MIN_CLOSEST_DISTANCE = 5D;
 
-    private static final double MAX_DISTANCE = 150D;
-
     /**
      * Ключевые точки для каждой линии, позволяющие упростить управление перемещением волшебника.
      * <p>
@@ -61,11 +59,13 @@ public final class MyStrategy implements Strategy {
         if (isNeedToMoveBack()) {
             goWithoutTurn(getPreviousWaypoint());
 
-            if (nearestTarget.isPresent()) {
+            if (nearestTarget.isPresent())
                 shootToTarget(self, game, move, nearestTarget.get(), true);
-                return;
-            }
+
+            return;
         } else {
+            goWithoutTurn(getNextWaypoint());
+
             if (nearestTarget.isPresent()) {
                 shootToTarget(self, game, move, nearestTarget.get(), true);
                 return;
@@ -80,16 +80,14 @@ public final class MyStrategy implements Strategy {
     private void shootToTarget(Wizard self, Game game, Move move, LivingUnit nearestTarget, boolean withTurn) {
         double distance = self.getDistanceTo(nearestTarget);
 
-        // ... и он в пределах досягаемости наших заклинаний, ...
         double angle = self.getAngleTo(nearestTarget);
 
-        // ... то поворачиваемся к цели.
         if (withTurn)
             move.setTurn(angle);
 
-        // Если цель перед нами, ...
+        if (distance > self.getCastRange()) return;
+
         if (abs(angle) < game.getStaffSector() / 2.0D) {
-            // ... то атакуем.
             move.setAction(ActionType.MAGIC_MISSILE);
             move.setCastAngle(angle);
             move.setMinCastDistance(distance - nearestTarget.getRadius() + game.getMagicMissileRadius());
@@ -269,7 +267,7 @@ public final class MyStrategy implements Strategy {
 
     private Point2D correctPoint(Point2D point2D) {
         WayFinder wayFinder = new WayFinder(self, world, game);
-        List<Point2D> way = wayFinder.findWay(point2D);
+        List<Point2D> way = wayFinder.findWay(point2D, true);
 
         if (way != null && way.size() > 0) {
             return way.get(0);
@@ -287,27 +285,47 @@ public final class MyStrategy implements Strategy {
 
         Optional<LivingUnit> nearestEnemy = units.stream()
                 .filter(unit -> gameHelper.isEnemy(self.getFaction(), unit))
-                .filter(unit -> abs(unit.getX() - self.getX()) < MAX_DISTANCE)
-                .filter(unit -> abs(unit.getY() - self.getY()) < MAX_DISTANCE)
+                .filter(unit -> abs(unit.getX() - self.getX()) < game.getWizardCastRange() * 2)
+                .filter(unit -> abs(unit.getY() - self.getY()) < game.getWizardCastRange() * 2)
                 .min(Comparator.comparingDouble(self::getDistanceTo));
 
         if (!nearestEnemy.isPresent()) return false;
 
-        if (nearestEnemy.get() instanceof Wizard)
-            return self.getLife() * (1 + LOW_HP_FACTOR / 2) < nearestEnemy.get().getLife();
+        List<Wizard> enemiesLookingToMe = gameHelper.getAllWizards().stream()
+                .filter(unit -> gameHelper.isEnemy(self.getFaction(), unit))
+                .filter(unit -> {
+                    double distanceTo = self.getDistanceTo(unit);
+                    return (distanceTo < game.getWizardCastRange() * 1.1 && abs(unit.getAngleTo(self)) <= game.getStaffSector());
+                })
+                .collect(Collectors.toList());
 
-        Optional<LivingUnit> nearestFrendToEnemy = units.stream()
-                .filter(unit -> self.getFaction() == unit.getFaction() && !unit.equals(self))
-                .filter(unit -> abs(unit.getX() - nearestEnemy.get().getX()) < MAX_DISTANCE)
-                .filter(unit -> abs(unit.getY() - nearestEnemy.get().getY()) < MAX_DISTANCE)
-                .filter(unit -> unit.getLife() > unit.getMaxLife() * getLowHpFactorToUnit(unit))
-                .min(Comparator.comparingDouble(nearestEnemy.get()::getDistanceTo));
+        if (enemiesLookingToMe.size() > 0) {
+            Wizard enemyWithBiggestHP = enemiesLookingToMe.stream()
+                    .max(Comparator.comparingInt(Wizard::getLife)).get();
 
-        if (!nearestFrendToEnemy.isPresent()) return true;
+            boolean hpIsLow = self.getLife() * (1 - LOW_HP_FACTOR / 2) < enemyWithBiggestHP.getLife();
 
-        double distanceToEnemy = self.getDistanceTo(nearestEnemy.get());
-        double distanceFromEnemyToFriend = nearestFrendToEnemy.get().getDistanceTo(nearestEnemy.get());
-        return distanceToEnemy <= distanceFromEnemyToFriend || distanceToEnemy < MIN_DISTANCE_TO_ENEMY;
+            boolean enemyIsToClose = nearestEnemy.get().getDistanceTo(self) <= game.getWizardCastRange() * 0.8;
+
+            if (hpIsLow || enemiesLookingToMe.size() > 1 || enemyIsToClose) return true;
+        }
+
+        //TODO: add checking of defenceTower
+
+        return false;
+
+//        Optional<LivingUnit> nearestFrendToEnemy = units.stream()
+//                .filter(unit -> self.getFaction() == unit.getFaction() && !unit.equals(self))
+//                .filter(unit -> abs(unit.getX() - nearestEnemy.get().getX()) < game.getWizardCastRange() * 2)
+//                .filter(unit -> abs(unit.getY() - nearestEnemy.get().getY()) < game.getWizardCastRange() * 2)
+//                .filter(unit -> unit.getLife() > unit.getMaxLife() * getLowHpFactorToUnit(unit))
+//                .min(Comparator.comparingDouble(nearestEnemy.get()::getDistanceTo));
+//
+//        if (!nearestFrendToEnemy.isPresent()) return true;
+//
+//        double distanceToEnemy = self.getDistanceTo(nearestEnemy.get());
+//        double distanceFromEnemyToFriend = nearestFrendToEnemy.get().getDistanceTo(nearestEnemy.get());
+//        return distanceToEnemy <= distanceFromEnemyToFriend || distanceToEnemy < MIN_DISTANCE_TO_ENEMY;
     }
 
     private double getLowHpFactorToUnit(LivingUnit unit) {
