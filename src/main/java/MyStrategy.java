@@ -185,7 +185,7 @@ public final class MyStrategy implements Strategy {
         this.world = world;
         this.game = game;
         this.move = move;
-        this.gameHelper = new GameHelper(world, game);
+        this.gameHelper = new GameHelper(world, game, self);
     }
 
     /**
@@ -281,17 +281,15 @@ public final class MyStrategy implements Strategy {
      */
     @SuppressWarnings("OptionalGetWithoutIsPresent")
     private Boolean isNeedToMoveBack() {
-        List<LivingUnit> units = gameHelper.getAllUnits(false);
+        List<LivingUnit> units = gameHelper.getAllUnits(false, false, true);
 
         Optional<LivingUnit> nearestEnemy = units.stream()
                 .filter(unit -> gameHelper.isEnemy(self.getFaction(), unit))
-                .filter(unit -> abs(unit.getX() - self.getX()) < game.getWizardCastRange() * 2)
-                .filter(unit -> abs(unit.getY() - self.getY()) < game.getWizardCastRange() * 2)
                 .min(Comparator.comparingDouble(self::getDistanceTo));
 
         if (!nearestEnemy.isPresent()) return false;
 
-        List<Wizard> enemiesLookingToMe = gameHelper.getAllWizards().stream()
+        List<Wizard> enemiesLookingToMe = gameHelper.getAllWizards(true, true).stream()
                 .filter(unit -> gameHelper.isEnemy(self.getFaction(), unit))
                 .filter(unit -> {
                     double distanceTo = self.getDistanceTo(unit);
@@ -310,22 +308,31 @@ public final class MyStrategy implements Strategy {
             if (hpIsLow || enemiesLookingToMe.size() > 1 || enemyIsToClose) return true;
         }
 
-        //TODO: add checking of defenceTower
+        Optional<Building> nearestBuilding = gameHelper.getAllBuldings(true, true).stream()
+                .min(Comparator.comparingDouble(self::getDistanceTo));
+
+        if (nearestBuilding.isPresent()) {
+            double demageRadius = 0;
+            if (nearestBuilding.get().getType() == BuildingType.FACTION_BASE)
+                demageRadius = game.getFactionBaseAttackRange();
+            if (nearestBuilding.get().getType() == BuildingType.GUARDIAN_TOWER)
+                demageRadius = game.getGuardianTowerAttackRange();
+
+            double distanceToBuilding = self.getDistanceTo(nearestBuilding.get());
+            if (distanceToBuilding < demageRadius) {
+
+                Optional<LivingUnit> nearestFriendToBuilding = units.stream()
+                        .filter(unit -> !gameHelper.isEnemy(self.getFaction(), unit))
+                        .min(Comparator.comparingDouble(nearestBuilding.get()::getDistanceTo));
+
+                return nearestFriendToBuilding
+                        .map(livingUnit -> distanceToBuilding < livingUnit.getDistanceTo(nearestBuilding.get()))
+                        .orElse(true);
+            }
+        }
+
 
         return false;
-
-//        Optional<LivingUnit> nearestFrendToEnemy = units.stream()
-//                .filter(unit -> self.getFaction() == unit.getFaction() && !unit.equals(self))
-//                .filter(unit -> abs(unit.getX() - nearestEnemy.get().getX()) < game.getWizardCastRange() * 2)
-//                .filter(unit -> abs(unit.getY() - nearestEnemy.get().getY()) < game.getWizardCastRange() * 2)
-//                .filter(unit -> unit.getLife() > unit.getMaxLife() * getLowHpFactorToUnit(unit))
-//                .min(Comparator.comparingDouble(nearestEnemy.get()::getDistanceTo));
-//
-//        if (!nearestFrendToEnemy.isPresent()) return true;
-//
-//        double distanceToEnemy = self.getDistanceTo(nearestEnemy.get());
-//        double distanceFromEnemyToFriend = nearestFrendToEnemy.get().getDistanceTo(nearestEnemy.get());
-//        return distanceToEnemy <= distanceFromEnemyToFriend || distanceToEnemy < MIN_DISTANCE_TO_ENEMY;
     }
 
     private double getLowHpFactorToUnit(LivingUnit unit) {
@@ -355,6 +362,9 @@ public final class MyStrategy implements Strategy {
             if (!gameHelper.isEnemy(self.getFaction(), target)) {
                 continue;
             }
+
+            if (abs(self.getX() - target.getX()) > game.getWizardCastRange() * 3) continue;
+            if (abs(self.getY() - target.getY()) > game.getWizardCastRange() * 3) continue;
 
             double distance = self.getDistanceTo(target);
 
