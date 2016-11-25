@@ -281,16 +281,21 @@ public final class MyStrategy implements Strategy {
      */
     @SuppressWarnings("OptionalGetWithoutIsPresent")
     private Boolean isNeedToMoveBack() {
-        List<LivingUnit> units = gameHelper.getAllUnits(false, false, true);
 
-        Optional<LivingUnit> nearestEnemy = units.stream()
+        long toCloseMinions = gameHelper.getAllMinions(true, true).stream()
                 .filter(unit -> gameHelper.isEnemy(self.getFaction(), unit))
-                .min(Comparator.comparingDouble(self::getDistanceTo));
+                .filter(minion -> {
+                    if (minion.getType() == MinionType.FETISH_BLOWDART)
+                        return self.getDistanceTo(minion) <= game.getFetishBlowdartAttackRange() * 1.1;
+                    else if (minion.getType() == MinionType.ORC_WOODCUTTER)
+                        return self.getDistanceTo(minion) <= game.getOrcWoodcutterAttackRange() * 3;
 
-        if (!nearestEnemy.isPresent()) return false;
+                    return false;
+                }).count();
+
+        if (toCloseMinions > 0) return true;
 
         List<Wizard> enemiesLookingToMe = gameHelper.getAllWizards(true, true).stream()
-                .filter(unit -> gameHelper.isEnemy(self.getFaction(), unit))
                 .filter(unit -> {
                     double distanceTo = self.getDistanceTo(unit);
                     return (distanceTo < game.getWizardCastRange() * 1.1 && abs(unit.getAngleTo(self)) <= game.getStaffSector());
@@ -303,12 +308,17 @@ public final class MyStrategy implements Strategy {
 
             boolean hpIsLow = self.getLife() * (1 - LOW_HP_FACTOR / 2) < enemyWithBiggestHP.getLife();
 
-            boolean enemyIsToClose = nearestEnemy.get().getDistanceTo(self) <= game.getWizardCastRange() * 0.8;
-
-            if (hpIsLow || enemiesLookingToMe.size() > 1 || enemyIsToClose) return true;
+            if (hpIsLow || enemiesLookingToMe.size() > 1) return true;
         }
 
-        Optional<Building> nearestBuilding = gameHelper.getAllBuldings(true, true).stream()
+        Optional<Wizard> enemyWithSmallestHP = gameHelper.getAllWizards(true, true).stream()
+                .filter(unit -> self.getDistanceTo(unit) < game.getWizardCastRange())
+                .min(Comparator.comparingInt(Wizard::getLife));
+
+        if (enemyWithSmallestHP.isPresent())
+            if (enemyWithSmallestHP.get().getDistanceTo(self) <= game.getWizardCastRange() * 0.8) return true;
+
+        Optional<Building> nearestBuilding = gameHelper.getAllBuldings(true, false).stream()
                 .min(Comparator.comparingDouble(self::getDistanceTo));
 
         if (nearestBuilding.isPresent()) {
@@ -321,7 +331,7 @@ public final class MyStrategy implements Strategy {
             double distanceToBuilding = self.getDistanceTo(nearestBuilding.get());
             if (distanceToBuilding < demageRadius) {
 
-                Optional<LivingUnit> nearestFriendToBuilding = units.stream()
+                Optional<LivingUnit> nearestFriendToBuilding = gameHelper.getAllUnits(false, false, true).stream()
                         .filter(unit -> !gameHelper.isEnemy(self.getFaction(), unit))
                         .min(Comparator.comparingDouble(nearestBuilding.get()::getDistanceTo));
 
