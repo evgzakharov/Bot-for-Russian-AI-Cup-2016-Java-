@@ -143,25 +143,26 @@ public final class MyStrategy implements Strategy {
                     new Point2D(mapSize - 200.0D, 200.0D)
             });
 
-            switch ((int) self.getId()) {
-                case 1:
-                case 2:
-                case 6:
-                case 7:
-                    lane = LaneType.TOP;
-                    break;
-                case 3:
-                case 8:
-                    lane = LaneType.MIDDLE;
-                    break;
-                case 4:
-                case 5:
-                case 9:
-                case 10:
-                    lane = LaneType.BOTTOM;
-                    break;
-                default:
-            }
+//            switch ((int) self.getId()) {
+//                case 1:
+//                case 2:
+//                case 6:
+//                case 7:
+//                    lane = LaneType.TOP;
+//                    break;
+//                case 3:
+//                case 8:
+//                    lane = LaneType.MIDDLE;
+//                    break;
+//                case 4:
+//                case 5:
+//                case 9:
+//                case 10:
+//                    lane = LaneType.BOTTOM;
+//                    break;
+//                default:
+//            }
+            lane = LaneType.BOTTOM;
 
             waypoints = waypointsByLane.get(lane);
 
@@ -267,7 +268,7 @@ public final class MyStrategy implements Strategy {
 
     private Point2D correctPoint(Point2D point2D) {
         WayFinder wayFinder = new WayFinder(self, world, game);
-        List<Point2D> way = wayFinder.findWay(point2D, true);
+        List<Point2D> way = wayFinder.findWay(point2D);
 
         if (way != null && way.size() > 0) {
             return way.get(0);
@@ -294,10 +295,11 @@ public final class MyStrategy implements Strategy {
 
         if (toCloseMinions > 0) return true;
 
-        List<Wizard> enemiesLookingToMe = gameHelper.getAllWizards(true, true).stream()
+        List<Wizard> enemyWizards = gameHelper.getAllWizards(true, true);
+        List<Wizard> enemiesLookingToMe = enemyWizards.stream()
                 .filter(unit -> {
                     double distanceTo = self.getDistanceTo(unit);
-                    return (distanceTo < game.getWizardCastRange() * 1.1 && abs(unit.getAngleTo(self)) <= game.getStaffSector());
+                    return (distanceTo < game.getWizardCastRange() && abs(unit.getAngleTo(self)) <= game.getStaffSector() * 2);
                 })
                 .collect(Collectors.toList());
 
@@ -310,28 +312,34 @@ public final class MyStrategy implements Strategy {
             if (hpIsLow || enemiesLookingToMe.size() > 1) return true;
         }
 
-        Optional<Wizard> enemyWithSmallestHP = gameHelper.getAllWizards(true, true).stream()
+        Optional<Wizard> enemyWithSmallestHP = enemyWizards.stream()
                 .filter(unit -> self.getDistanceTo(unit) < game.getWizardCastRange())
                 .min(Comparator.comparingInt(Wizard::getLife));
 
-        if (enemyWithSmallestHP.isPresent())
-            if (enemyWithSmallestHP.get().getDistanceTo(self) <= game.getWizardCastRange() * 0.8) return true;
+        if (enemyWithSmallestHP.isPresent()) {
+            boolean enemyIsToClose = enemyWithSmallestHP.get().getDistanceTo(self) <= game.getWizardCastRange() * 0.8;
 
-        Optional<Building> nearestBuilding = gameHelper.getAllBuldings(true, false).stream()
+            boolean hpIsToLow = self.getLife() < 0.5 * self.getMaxLife()
+                    && self.getLife() * 0.9 < enemyWithSmallestHP.get().getLife()
+                    && enemyWithSmallestHP.get().getAngleTo(self) <= game.getStaffSector() * 2;
+
+            if (enemyIsToClose || hpIsToLow) return true;
+        }
+
+        Optional<Building> nearestBuilding = gameHelper.getAllBuldings(true).stream()
                 .min(Comparator.comparingDouble(self::getDistanceTo));
 
         if (nearestBuilding.isPresent()) {
             double demageRadius = 0;
             if (nearestBuilding.get().getType() == BuildingType.FACTION_BASE)
-                demageRadius = game.getFactionBaseAttackRange();
+                demageRadius = game.getFactionBaseAttackRange() + MIN_CLOSEST_DISTANCE;
             if (nearestBuilding.get().getType() == BuildingType.GUARDIAN_TOWER)
-                demageRadius = game.getGuardianTowerAttackRange();
+                demageRadius = game.getGuardianTowerAttackRange() + MIN_CLOSEST_DISTANCE;
 
             double distanceToBuilding = self.getDistanceTo(nearestBuilding.get());
             if (distanceToBuilding < demageRadius) {
 
-                Optional<LivingUnit> nearestFriendToBuilding = gameHelper.getAllUnits(false, false, true).stream()
-                        .filter(unit -> !gameHelper.isEnemy(self.getFaction(), unit))
+                Optional<LivingUnit> nearestFriendToBuilding = gameHelper.getAllMovingUnits(true, true).stream()
                         .filter(unit -> unit.getLife() >= unit.getMaxLife() * getLowHpFactorToUnit(unit))
                         .min(Comparator.comparingDouble(nearestBuilding.get()::getDistanceTo));
 

@@ -24,18 +24,18 @@ public class WayFinder {
         this.gameHelper = new GameHelper(world, game, wizard);
     }
 
-    public List<Point2D> findWay(Point2D point, Boolean withEnemyChecking) {
+    public List<Point2D> findWay(Point2D point) {
         Matrix matrixStart = new Matrix(new Point2D(wizard.getX(), wizard.getY()), new MatrixPoint(), null);
         matrixStart.setPathCount(0);
 
         List<LivingUnit> allUnits = gameHelper.getAllUnits(true, false, false);
 
-        List<Point2D> findLine = growMatrix(Collections.singletonList(matrixStart), point, allUnits, withEnemyChecking);
+        List<Point2D> findLine = growMatrix(Collections.singletonList(matrixStart), point, allUnits);
 
         return findLine;
     }
 
-    private List<Point2D> growMatrix(List<Matrix> stepPoints, Point2D findingWayPoint, List<LivingUnit> allUnits, Boolean withEnemyChecking) {
+    private List<Point2D> growMatrix(List<Matrix> stepPoints, Point2D findingWayPoint, List<LivingUnit> allUnits) {
         List<Matrix> newStepPoints = new ArrayList<>();
 
         Matrix lastMatrix = null;
@@ -64,7 +64,7 @@ public class WayFinder {
                     Matrix newMatrix = new Matrix(newPoint, matrixPoint, stepMatrix);
                     newMatrix.setPathCount(newPathCount);
 
-                    if (!freeLocation(newPoint, allUnits, withEnemyChecking)) continue;
+                    if (!freeLocation(newPoint, allUnits)) continue;
 
                     newStepPoints.add(newMatrix);
                     newMatrix.getMatrixPoints().put(matrixPoint, newMatrix);
@@ -77,7 +77,7 @@ public class WayFinder {
         }
 
         if (!newStepPoints.isEmpty()) {
-            List<Point2D> point2DS = growMatrix(newStepPoints, findingWayPoint, allUnits, withEnemyChecking);
+            List<Point2D> point2DS = growMatrix(newStepPoints, findingWayPoint, allUnits);
             if (point2DS.isEmpty()) {
                 if (stepPoints.size() == 1 && lastMatrix != null && lastMatrix.getMatrixPoints().size() > 0) {
                     Optional<Matrix> nearestMatrix = lastMatrix.getMatrixPoints().values().stream()
@@ -92,22 +92,19 @@ public class WayFinder {
         return Collections.emptyList();
     }
 
-    private boolean freeLocation(Point2D newPoint, List<LivingUnit> allUnits, Boolean withEnemyChecking) {
+    private boolean freeLocation(Point2D newPoint, List<LivingUnit> allUnits) {
         return allUnits.stream()
                 .filter(unit -> abs(unit.getX() - newPoint.getX()) < MAX_RANGE)
                 .filter(unit -> abs(unit.getY() - newPoint.getY()) < MAX_RANGE)
-                .noneMatch(unit -> newPoint.getDistanceTo(unit) <= getUnitDistance(unit, withEnemyChecking) + wizard.getRadius() + MIN_CLOSEST_RANGE);
+                .noneMatch(unit -> newPoint.getDistanceTo(unit) <= getUnitDistance(unit) + wizard.getRadius() + MIN_CLOSEST_RANGE);
     }
 
-    private double getUnitDistance(LivingUnit unit, Boolean withEnemyChecking) {
-        if (!withEnemyChecking) return unit.getRadius();
+    private double getUnitDistance(LivingUnit unit) {
+        if (unit instanceof Building) {
+            Building building = (Building) unit;
 
-        if (unit instanceof Minion) {
-            if (((Minion) unit).getType() == MinionType.ORC_WOODCUTTER)
-                return game.getOrcWoodcutterAttackRange();
-
-            if (((Minion) unit).getType() == MinionType.FETISH_BLOWDART)
-                return game.getFetishBlowdartAttackRange();
+            if (building.getType() == BuildingType.FACTION_BASE)
+                return unit.getRadius() + MIN_CLOSEST_RANGE * 2;
         }
 
         return unit.getRadius();
@@ -130,12 +127,13 @@ public class WayFinder {
 
     private boolean checkPointPosition(Point2D newPoint, Point2D wayPoint) {
         return inRange(newPoint.getX(), wayPoint.getX(), wizard.getX(), world.getWidth()) &&
-                inRange(newPoint.getY(), wayPoint.getY(), wizard.getY(), world.getHeight()) &&
-                (wizard.getDistanceTo(newPoint.getX(), newPoint.getY()) <= MAX_RANGE);
+                inRange(newPoint.getY(), wayPoint.getY(), wizard.getY(), world.getHeight());
     }
 
     private boolean inRange(double newValue, double wayPointValue, double wizardValue, double limit) {
-        return !(newValue < wizard.getRadius() + MIN_CLOSEST_RANGE || newValue + wizard.getRadius() + MIN_CLOSEST_RANGE > limit);
+        return abs(wizardValue - newValue) <= MAX_RANGE
+                && (newValue - wizard.getRadius() - MIN_CLOSEST_RANGE) >= 0
+                && (newValue + wizard.getRadius() + MIN_CLOSEST_RANGE) <= limit;
     }
 
 }

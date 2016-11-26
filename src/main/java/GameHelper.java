@@ -24,11 +24,20 @@ public class GameHelper {
         List<LivingUnit> units = new ArrayList<>();
 
         units.addAll(getAllWizards(onlyEnemy, onlyNearest));
-        units.addAll(getAllBuldings(onlyEnemy, onlyNearest));
+        units.addAll(getAllBuldings(onlyEnemy));
         units.addAll(getAllMinions(onlyEnemy, onlyNearest));
 
         if (withTrees)
             units.addAll(Arrays.asList(world.getTrees()));
+
+        return units;
+    }
+
+    public List<LivingUnit> getAllMovingUnits(boolean onlyEnemy, boolean onlyNearest) {
+        List<LivingUnit> units = new ArrayList<>();
+
+        units.addAll(getAllWizards(onlyEnemy, onlyNearest));
+        units.addAll(getAllMinions(onlyEnemy, onlyNearest));
 
         return units;
     }
@@ -47,9 +56,9 @@ public class GameHelper {
 
     }
 
-    public List<Building> getAllBuldings(boolean onlyEnemy, boolean onlyNearest) {
+    public List<Building> getAllBuldings(boolean onlyEnemy) {
         return Arrays.stream(world.getBuildings())
-                .filter(filterLivingUnits(onlyEnemy, onlyNearest))
+                .filter(filterLivingUnits(onlyEnemy, false))
                 .collect(Collectors.toList());
     }
 
