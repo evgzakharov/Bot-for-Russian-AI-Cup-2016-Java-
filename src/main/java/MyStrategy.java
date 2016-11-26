@@ -332,7 +332,7 @@ public final class MyStrategy implements Strategy {
 
                 boolean hgIsLow = self.getLife() < (1 - LOW_HP_FACTOR) * self.getMaxLife();
 
-                boolean buldingWillShoot = nearestBuilding.get().getRemainingActionCooldownTicks() < 75;
+                boolean buldingWillShoot = nearestBuilding.get().getRemainingActionCooldownTicks() < 100;
 
                 if ((noFriends && hgIsLow && buldingWillShoot) || buldingIsToClose)
                     buldingCondition = true;
