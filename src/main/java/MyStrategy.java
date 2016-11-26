@@ -262,29 +262,38 @@ public final class MyStrategy implements Strategy {
                     return false;
                 }).count();
 
-        if (toCloseMinions > 0) return true;
+        boolean minionsCondition = toCloseMinions > 0;
+
+        if (minionsCondition) return true;
 
         List<Wizard> enemyWizards = gameHelper.getAllWizards(true, true);
         List<Wizard> enemiesLookingToMe = enemyWizards.stream()
                 .filter(unit -> {
                     double distanceTo = self.getDistanceTo(unit);
-                    return (distanceTo < game.getWizardCastRange() && abs(unit.getAngleTo(self)) <= game.getStaffSector() * 2);
+                    return (distanceTo < game.getWizardCastRange() * 1.1 && abs(unit.getAngleTo(self)) <= game.getStaffSector() * 1.2);
                 })
                 .collect(Collectors.toList());
 
-        if (enemiesLookingToMe.size() > 0) {
+        boolean multiEnemiesCondition = false;
+        if (enemiesLookingToMe.size() > 1) {
             Wizard enemyWithBiggestHP = enemiesLookingToMe.stream()
                     .max(Comparator.comparingInt(Wizard::getLife)).get();
 
-            boolean hpIsLow = self.getLife() * (1 - LOW_HP_FACTOR / 2) < enemyWithBiggestHP.getLife();
+            boolean hpIsLow = self.getLife() < self.getMaxLife() * (LOW_HP_FACTOR * 3)
+                    && self.getLife() * (1 - LOW_HP_FACTOR / 2) < enemyWithBiggestHP.getLife();
 
-            if (hpIsLow || enemiesLookingToMe.size() > 1) return true;
+            if (hpIsLow)
+                multiEnemiesCondition = true;
         }
+
+        if (multiEnemiesCondition)
+            return true;
 
         Optional<Wizard> enemyWithSmallestHP = enemyWizards.stream()
                 .filter(unit -> self.getDistanceTo(unit) < game.getWizardCastRange())
                 .min(Comparator.comparingInt(Wizard::getLife));
 
+        boolean singleEnemyCondition = false;
         if (enemyWithSmallestHP.isPresent()) {
             boolean enemyIsToClose = enemyWithSmallestHP.get().getDistanceTo(self) <= game.getWizardCastRange() * 0.8;
 
@@ -292,12 +301,15 @@ public final class MyStrategy implements Strategy {
                     && self.getLife() * (1 - LOW_HP_FACTOR / 2) < enemyWithSmallestHP.get().getLife()
                     && enemyWithSmallestHP.get().getAngleTo(self) <= game.getStaffSector() * 2;
 
-            if (enemyIsToClose || hpIsToLow) return true;
+            if (enemyIsToClose || hpIsToLow)
+                singleEnemyCondition = true;
         }
+        if (singleEnemyCondition) return true;
 
         Optional<Building> nearestBuilding = gameHelper.getAllBuldings(true).stream()
                 .min(Comparator.comparingDouble(self::getDistanceTo));
 
+        boolean buldingCondition = false;
         if (nearestBuilding.isPresent()) {
             double demageRadius = 0;
             if (nearestBuilding.get().getType() == BuildingType.FACTION_BASE)
@@ -309,15 +321,26 @@ public final class MyStrategy implements Strategy {
             if (distanceToBuilding < demageRadius) {
 
                 Optional<LivingUnit> nearestFriendToBuilding = gameHelper.getAllMovingUnits(true, true).stream()
-                        .filter(unit -> unit.getLife() >= unit.getMaxLife() * getLowHpFactorToUnit(unit))
+                        .filter(unit -> unit.getLife() / unit.getMaxLife() < self.getLife() / self.getMaxLife())
                         .min(Comparator.comparingDouble(nearestBuilding.get()::getDistanceTo));
 
-                return nearestFriendToBuilding
+                boolean noFriends = nearestFriendToBuilding
                         .map(livingUnit -> distanceToBuilding < livingUnit.getDistanceTo(nearestBuilding.get()))
                         .orElse(true);
+
+                boolean buldingIsToClose = (demageRadius - distanceToBuilding) >= game.getWizardRadius() * 4;
+
+                boolean hgIsLow = self.getLife() < (1 - LOW_HP_FACTOR) * self.getMaxLife();
+
+                boolean buldingWillShoot = nearestBuilding.get().getRemainingActionCooldownTicks() < 75;
+
+                if ((noFriends && hgIsLow && buldingWillShoot) || buldingIsToClose)
+                    buldingCondition = true;
             }
         }
 
+        if (buldingCondition)
+            return true;
 
         return false;
     }
