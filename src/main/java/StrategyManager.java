@@ -31,7 +31,7 @@ public class StrategyManager {
 
         actionManager.init(self, world, game, move, this);
 
-        ActionMode nextAction = actionManager.move();
+        actionMode = actionManager.move();
     }
 
     private void initializeDefault() {

@@ -1,10 +1,8 @@
 import model.LaneType;
 import model.Wizard;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class LineHelper {
 
@@ -46,7 +44,19 @@ public class LineHelper {
     }
 
     public Point2D getNextWaypoint(LaneType laneType, boolean attack) {
-        //TODO;
+        List<Point2D> points = mainLines.get(laneType);
+
+        int start = 0;
+        int diff = 1;
+        if (!attack) {
+            start = points.size() - 1;
+            diff = -1;
+        }
+
+        for (int index = start; index > 0 && index <= points.size(); index += diff) {
+
+        }
+
         return null;
     }
 
