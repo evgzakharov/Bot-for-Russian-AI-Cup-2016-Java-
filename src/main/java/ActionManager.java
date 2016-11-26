@@ -1,6 +1,5 @@
 import model.*;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -8,7 +7,7 @@ import java.util.stream.Collectors;
 
 import static java.lang.StrictMath.*;
 
-abstract class GameManager {
+abstract class ActionManager {
 
     protected Wizard self;
     protected World world;
@@ -18,6 +17,7 @@ abstract class GameManager {
     protected ShootHelper shootHelder;
     protected MoveHelper moveHelper;
     protected LineHelper lineHelper;
+    protected StrategyManager strategyManager;
 
     protected static final double LOW_HP_FACTOR = 0.25D;
     protected static final double LOW_BUIDING_FACTOR = 0.1D;
@@ -25,7 +25,7 @@ abstract class GameManager {
 
     protected static final double MIN_CLOSEST_DISTANCE = 5D;
 
-    public void init(Wizard self, World world, Game game, Move move) {
+    public void init(Wizard self, World world, Game game, Move move, StrategyManager strategyManager) {
         this.self = self;
         this.world = world;
         this.game = game;
@@ -33,16 +33,22 @@ abstract class GameManager {
         this.findHelper = new FindHelper(world, game, self);
         this.shootHelder = new ShootHelper(self, game, move);
         this.moveHelper = new MoveHelper(self, world, game, move);
-        this.lineHelper = new LineHelper(game.getMapSize());
-
-        initialize();
+        this.lineHelper = new LineHelper(self, game.getMapSize());
+        this.strategyManager = strategyManager;
     }
 
-    abstract public void initialize();
+    public ActionMode move() {
+        Optional<Tree> nearestTree = findHelper.getAllTrees()
+                .filter(tree -> self.getAngleTo(tree) < game.getStaffSector())
+                .filter(tree -> self.getDistanceTo(tree) < self.getRadius() + tree.getRadius() + MIN_CLOSEST_DISTANCE)
+                .findAny();
 
-    abstract public GameMode move();
+        nearestTree.ifPresent(tree -> move.setAction(ActionType.STAFF));
 
-    abstract public GameMode getMode();
+        return ActionMode.ATTACK;
+    }
+
+    abstract public ActionMode getMode();
 
     protected boolean buldingCondition() {
         Optional<Building> nearestBuilding = findHelper.getAllBuldings(true).stream()

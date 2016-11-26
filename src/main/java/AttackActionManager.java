@@ -4,58 +4,31 @@ import java.util.List;
 import java.util.Optional;
 
 
-public class AttackGameManager extends GameManager {
-    private LaneType laneType;
-
+public class AttackActionManager extends ActionManager {
     @Override
-    public void initialize() {
-        if (laneType == null) {
-            switch ((int) self.getId()) {
-                case 1:
-                case 2:
-                case 6:
-                case 7:
-                    laneType = LaneType.TOP;
-                    break;
-                case 3:
-                case 8:
-                    laneType = LaneType.MIDDLE;
-                    break;
-                case 4:
-                case 5:
-                case 9:
-                case 10:
-                    laneType = LaneType.BOTTOM;
-                    break;
-                default:
-            }
-        }
-    }
-
-    @Override
-    public GameMode move() {
+    public ActionMode move() {
         if (self.getLife() < self.getMaxLife() * LOW_HP_FACTOR) {
-            moveHelper.goTo(getPreviousWaypoint());
-            return GameMode.ATTACK;
+            moveHelper.goTo(lineHelper.getPreviousWaypoint(strategyManager.getLaneType(), true));
+            return ActionMode.ATTACK;
         }
 
         Optional<LivingUnit> nearestTarget = findHelper.getNearestEnemy();
         if (isNeedToMoveBack()) {
-            moveHelper.goWithoutTurn(getPreviousWaypoint());
+            moveHelper.goWithoutTurn(lineHelper.getPreviousWaypoint(strategyManager.getLaneType(), true));
 
             nearestTarget.ifPresent(livingUnit -> shootHelder.shootToTarget(livingUnit));
 
-            return GameMode.ATTACK;
+            return ActionMode.ATTACK;
         } else {
-            moveHelper.goWithoutTurn(getNextWaypoint());
+            moveHelper.goWithoutTurn(lineHelper.getNextWaypoint(strategyManager.getLaneType(), true));
 
             if (nearestTarget.isPresent()) {
                 shootHelder.shootToTarget(nearestTarget.get());
-                return GameMode.ATTACK;
+                return ActionMode.ATTACK;
             }
         }
 
-        moveHelper.goTo(getNextWaypoint());
+        moveHelper.goTo(lineHelper.getPreviousWaypoint(strategyManager.getLaneType(), true));
 
         Optional<Tree> nearestTree = findHelper.getAllTrees()
                 .filter(tree -> self.getAngleTo(tree) < game.getStaffSector())
@@ -64,16 +37,9 @@ public class AttackGameManager extends GameManager {
 
         nearestTree.ifPresent(tree -> move.setAction(ActionType.STAFF));
 
-        return GameMode.ATTACK;
-    }
+        super.move();
 
-    private Point2D getNextWaypoint() {
-        //TODO;
-        return null;
-    }
-
-    private Point2D getPreviousWaypoint() {
-        return null;
+        return ActionMode.ATTACK;
     }
 
     private boolean isNeedToMoveBack() {
@@ -95,7 +61,7 @@ public class AttackGameManager extends GameManager {
     }
 
     @Override
-    public GameMode getMode() {
-        return GameMode.ATTACK;
+    public ActionMode getMode() {
+        return ActionMode.ATTACK;
     }
 }
