@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.lang.StrictMath.abs;
 
@@ -66,6 +67,11 @@ public class GameHelper {
         return Arrays.stream(world.getMinions())
                 .filter(filterLivingUnits(onlyEnemy, onlyNearest))
                 .collect(Collectors.toList());
+    }
+
+    public Stream<Tree> getAllTrees() {
+        return Arrays.stream(world.getTrees())
+                .filter(filterLivingUnits(false, true));
     }
 
 

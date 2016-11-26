@@ -12,8 +12,6 @@ public final class MyStrategy implements Strategy {
     private static final double LOW_BUIDING_FACTOR = 0.1D;
     private static final double LOW_MINION_FACTOR = 0.35D;
 
-    private static final double MIN_DISTANCE_TO_ENEMY = 50D;
-
     private static final double MIN_CLOSEST_DISTANCE = 5D;
 
     /**
@@ -72,9 +70,15 @@ public final class MyStrategy implements Strategy {
             }
         }
 
-        // shoot forest, if can
-
         goTo(getNextWaypoint());
+
+        Optional<Tree> nearestTree = gameHelper.getAllTrees()
+                .filter(tree -> self.getAngleTo(tree) < game.getStaffSector())
+                .filter(tree -> self.getDistanceTo(tree) < self.getRadius() + tree.getRadius() + MIN_CLOSEST_DISTANCE)
+                .findAny();
+
+        if (nearestTree.isPresent())
+            move.setAction(ActionType.STAFF);
     }
 
     private void shootToTarget(Wizard self, Game game, Move move, LivingUnit nearestTarget, boolean withTurn) {
@@ -94,12 +98,6 @@ public final class MyStrategy implements Strategy {
         }
     }
 
-    /**
-     * Инциализируем стратегию.
-     * <p>
-     * Для этих целей обычно можно использовать конструктор, однако в данном случае мы хотим инициализировать генератор
-     * случайных чисел значением, полученным от симулятора игры.
-     */
     private void initializeStrategy(Wizard self, Game game) {
         if (random == null) {
             random = new Random(game.getRandomSeed());
@@ -143,44 +141,30 @@ public final class MyStrategy implements Strategy {
                     new Point2D(mapSize - 200.0D, 200.0D)
             });
 
-//            switch ((int) self.getId()) {
-//                case 1:
-//                case 2:
-//                case 6:
-//                case 7:
-//                    lane = LaneType.TOP;
-//                    break;
-//                case 3:
-//                case 8:
-//                    lane = LaneType.MIDDLE;
-//                    break;
-//                case 4:
-//                case 5:
-//                case 9:
-//                case 10:
-//                    lane = LaneType.BOTTOM;
-//                    break;
-//                default:
-//            }
-            lane = LaneType.BOTTOM;
+            switch ((int) self.getId()) {
+                case 1:
+                case 2:
+                case 6:
+                case 7:
+                    lane = LaneType.TOP;
+                    break;
+                case 3:
+                case 8:
+                    lane = LaneType.MIDDLE;
+                    break;
+                case 4:
+                case 5:
+                case 9:
+                case 10:
+                    lane = LaneType.BOTTOM;
+                    break;
+                default:
+            }
 
             waypoints = waypointsByLane.get(lane);
-
-            // Наша стратегия исходит из предположения, что заданные нами ключевые точки упорядочены по убыванию
-            // дальности до последней ключевой точки. Сейчас проверка этого факта отключена, однако вы можете
-            // написать свою проверку, если решите изменить координаты ключевых точек.
-
-            /*Point2D lastWaypoint = waypoints[waypoints.length - 1];
-
-            Preconditions.checkState(ArrayUtils.isSorted(waypoints, (waypointA, waypointB) -> Double.compare(
-                    waypointB.getDistanceTo(lastWaypoint), waypointA.getDistanceTo(lastWaypoint)
-            )));*/
         }
     }
 
-    /**
-     * Сохраняем все входные данные в полях класса для упрощения доступа к ним.
-     */
     private void initializeTick(Wizard self, World world, Game game, Move move) {
         this.self = self;
         this.world = world;
@@ -189,14 +173,6 @@ public final class MyStrategy implements Strategy {
         this.gameHelper = new GameHelper(world, game, self);
     }
 
-    /**
-     * Данный метод предполагает, что все ключевые точки на линии упорядочены по уменьшению дистанции до последней
-     * ключевой точки. Перебирая их по порядку, находим первую попавшуюся точку, которая находится ближе к последней
-     * точке на линии, чем волшебник. Это и будет следующей ключевой точкой.
-     * <p>
-     * Дополнительно проверяем, не находится ли волшебник достаточно близко к какой-либо из ключевых точек. Если это
-     * так, то мы сразу возвращаем следующую ключевую точку.
-     */
     private Point2D getNextWaypoint() {
         int lastWaypointIndex = waypoints.length - 1;
         Point2D lastWaypoint = waypoints[lastWaypointIndex];
@@ -216,10 +192,6 @@ public final class MyStrategy implements Strategy {
         return lastWaypoint;
     }
 
-    /**
-     * Действие данного метода абсолютно идентично действию метода {@code getNextWaypoint}, если перевернуть массив
-     * {@code waypoints}.
-     */
     private Point2D getPreviousWaypoint() {
         Point2D firstWaypoint = waypoints[0];
 
@@ -238,9 +210,6 @@ public final class MyStrategy implements Strategy {
         return firstWaypoint;
     }
 
-    /**
-     * Простейший способ перемещения волшебника.
-     */
     private void goTo(Point2D point) {
         Point2D correctedPoint = correctPoint(point);
 
@@ -319,8 +288,8 @@ public final class MyStrategy implements Strategy {
         if (enemyWithSmallestHP.isPresent()) {
             boolean enemyIsToClose = enemyWithSmallestHP.get().getDistanceTo(self) <= game.getWizardCastRange() * 0.8;
 
-            boolean hpIsToLow = self.getLife() < 0.5 * self.getMaxLife()
-                    && self.getLife() * 0.9 < enemyWithSmallestHP.get().getLife()
+            boolean hpIsToLow = self.getLife() < (LOW_HP_FACTOR * 2) * self.getMaxLife()
+                    && self.getLife() * (1 - LOW_HP_FACTOR / 2) < enemyWithSmallestHP.get().getLife()
                     && enemyWithSmallestHP.get().getAngleTo(self) <= game.getStaffSector() * 2;
 
             if (enemyIsToClose || hpIsToLow) return true;
