@@ -1,21 +1,19 @@
 import model.*;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.lang.StrictMath.abs;
 
-public class GameHelper {
+public class FindHelper {
 
     private Wizard wizard;
     private World world;
     private Game game;
 
-    public GameHelper(World world, Game game, Wizard wizard) {
+    public FindHelper(World world, Game game, Wizard wizard) {
         this.world = world;
         this.game = game;
         this.wizard = wizard;
@@ -77,5 +75,40 @@ public class GameHelper {
 
     public boolean isEnemy(Faction self, LivingUnit unit) {
         return self != unit.getFaction() && unit.getFaction() != Faction.NEUTRAL;
+    }
+
+    public Optional<LivingUnit> getNearestEnemy() {
+        Optional<LivingUnit> nearestWizard = getNearestTarget(world.getWizards());
+
+        if (nearestWizard.isPresent()) return nearestWizard;
+
+        Optional<LivingUnit> nearestBuilding = getNearestTarget(world.getBuildings());
+
+        if (nearestBuilding.isPresent()) return nearestBuilding;
+
+        else return getNearestTarget(world.getMinions());
+    }
+
+    public Optional<LivingUnit> getNearestTarget(LivingUnit[] targets) {
+        List<LivingUnit> nearestTargets = new ArrayList<>();
+
+        for (LivingUnit target : targets) {
+            if (!isEnemy(wizard.getFaction(), target)) {
+                continue;
+            }
+
+            if (abs(wizard.getX() - target.getX()) > game.getWizardCastRange() * 2) continue;
+            if (abs(wizard.getY() - target.getY()) > game.getWizardCastRange() * 2) continue;
+
+            double distance = wizard.getDistanceTo(target);
+
+            if (distance < wizard.getCastRange()) {
+                nearestTargets.add(target);
+            }
+        }
+
+        return nearestTargets
+                .stream()
+                .min(Comparator.comparingInt(LivingUnit::getLife));
     }
 }

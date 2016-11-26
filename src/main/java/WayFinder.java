@@ -9,7 +9,7 @@ public class WayFinder {
     private Wizard wizard;
     private World world;
     private Game game;
-    private GameHelper gameHelper;
+    private FindHelper findHelper;
 
     private double matrixStep;
 
@@ -21,14 +21,14 @@ public class WayFinder {
         this.world = world;
         this.game = game;
         this.matrixStep = wizard.getRadius() / 2;
-        this.gameHelper = new GameHelper(world, game, wizard);
+        this.findHelper = new FindHelper(world, game, wizard);
     }
 
     public List<Point2D> findWay(Point2D point) {
         Matrix matrixStart = new Matrix(new Point2D(wizard.getX(), wizard.getY()), new MatrixPoint(), null);
         matrixStart.setPathCount(0);
 
-        List<LivingUnit> allUnits = gameHelper.getAllUnits(true, false, false);
+        List<LivingUnit> allUnits = findHelper.getAllUnits(true, false, false);
 
         List<Point2D> findLine = growMatrix(Collections.singletonList(matrixStart), point, allUnits);
 
