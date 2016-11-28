@@ -14,6 +14,8 @@ public final class MyStrategy implements Strategy {
     }
 
     private void initialize() {
+        FindHelper.clearCache();
+
         if (strategyManager == null) {
             strategyManager = new StrategyManager();
         }

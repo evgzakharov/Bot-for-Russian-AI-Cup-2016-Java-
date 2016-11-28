@@ -16,7 +16,7 @@ abstract class ActionManager {
     protected FindHelper findHelper;
     protected ShootHelper shootHelder;
     protected MoveHelper moveHelper;
-    protected LineHelper lineHelper;
+    protected MapHelper lineHelper;
     protected StrategyManager strategyManager;
 
     protected static final double LOW_HP_FACTOR = 0.25D;
@@ -33,12 +33,12 @@ abstract class ActionManager {
         this.findHelper = new FindHelper(world, game, self);
         this.shootHelder = new ShootHelper(self, game, move);
         this.moveHelper = new MoveHelper(self, world, game, move);
-        this.lineHelper = new LineHelper(self, game.getMapSize());
+        this.lineHelper = new MapHelper(world, game, self);
         this.strategyManager = strategyManager;
     }
 
     public ActionMode move() {
-        Optional<Tree> nearestTree = findHelper.getAllTrees()
+        Optional<Tree> nearestTree = findHelper.getAllTrees().stream()
                 .filter(tree -> self.getAngleTo(tree) < game.getStaffSector())
                 .filter(tree -> self.getDistanceTo(tree) < self.getRadius() + tree.getRadius() + MIN_CLOSEST_DISTANCE)
                 .findAny();
@@ -58,7 +58,7 @@ abstract class ActionManager {
         if (nearestBuilding.isPresent()) {
             double demageRadius = 0;
             if (nearestBuilding.get().getType() == BuildingType.FACTION_BASE)
-                demageRadius = game.getFactionBaseAttackRange() + MIN_CLOSEST_DISTANCE;
+                demageRadius = game.getFactionBaseAttackRange();
             if (nearestBuilding.get().getType() == BuildingType.GUARDIAN_TOWER)
                 demageRadius = game.getGuardianTowerAttackRange() + MIN_CLOSEST_DISTANCE;
 

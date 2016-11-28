@@ -13,6 +13,22 @@ public class FindHelper {
     private World world;
     private Game game;
 
+    private static Map<List<Boolean>, List<LivingUnit>> allUnitsCache = new HashMap<>();
+    private static Map<List<Boolean>, List<LivingUnit>> allMovingUnitsCache = new HashMap<>();
+    private static Map<List<Boolean>, List<Wizard>> allWizardsCache = new HashMap<>();
+    private static Map<Boolean, List<Building>> allBuldings = new HashMap<>();
+    private static Map<List<Boolean>, List<Minion>> allMinions = new HashMap<>();
+    private static List<Tree> allTrees = null;
+
+    public static void clearCache() {
+        allUnitsCache = new HashMap<>();
+        allMovingUnitsCache = new HashMap<>();
+        allWizardsCache = new HashMap<>();
+        allBuldings = new HashMap<>();
+        allMinions = new HashMap<>();
+        allTrees = null;
+    }
+
     public FindHelper(World world, Game game, Wizard wizard) {
         this.world = world;
         this.game = game;
@@ -20,6 +36,9 @@ public class FindHelper {
     }
 
     public List<LivingUnit> getAllUnits(boolean withTrees, boolean onlyEnemy, boolean onlyNearest) {
+        List<Boolean> cacheKey = Arrays.asList(withTrees, onlyEnemy, onlyNearest);
+        if (allUnitsCache.get(cacheKey) != null) return allUnitsCache.get(cacheKey);
+
         List<LivingUnit> units = new ArrayList<>();
 
         units.addAll(getAllWizards(onlyEnemy, onlyNearest));
@@ -29,23 +48,38 @@ public class FindHelper {
         if (withTrees)
             units.addAll(Arrays.asList(world.getTrees()));
 
+        allUnitsCache.put(cacheKey, units);
+
         return units;
     }
 
     public List<LivingUnit> getAllMovingUnits(boolean onlyEnemy, boolean onlyNearest) {
+        List<Boolean> cacheKey = Arrays.asList(onlyEnemy, onlyNearest);
+        if (allMovingUnitsCache.get(cacheKey) != null) return allMovingUnitsCache.get(cacheKey);
+
         List<LivingUnit> units = new ArrayList<>();
 
         units.addAll(getAllWizards(onlyEnemy, onlyNearest));
         units.addAll(getAllMinions(onlyEnemy, onlyNearest));
 
+        allMovingUnitsCache.put(cacheKey, units);
+
         return units;
     }
 
     public List<Wizard> getAllWizards(boolean onlyEnemy, boolean onlyNearest) {
-        return Arrays.stream(world.getWizards())
+        List<Boolean> cacheKey = Arrays.asList(onlyEnemy, onlyNearest);
+
+        if (allWizardsCache.get(cacheKey) != null) return allWizardsCache.get(cacheKey);
+
+        List<Wizard> newUnins = Arrays.stream(world.getWizards())
                 .filter(wizard -> !wizard.isMe())
                 .filter(filterLivingUnits(onlyEnemy, onlyNearest))
                 .collect(Collectors.toList());
+
+        allWizardsCache.put(cacheKey, newUnins);
+
+        return newUnins;
     }
 
     private Predicate<LivingUnit> filterLivingUnits(boolean onlyEnemy, boolean onlyNearest) {
@@ -56,22 +90,44 @@ public class FindHelper {
     }
 
     public List<Building> getAllBuldings(boolean onlyEnemy) {
-        return Arrays.stream(world.getBuildings())
+        Boolean cacheKey = onlyEnemy;
+
+        if (allBuldings.get(cacheKey) != null) return allBuldings.get(cacheKey);
+
+        List<Building> newUnits = Arrays.stream(world.getBuildings())
                 .filter(filterLivingUnits(onlyEnemy, false))
                 .collect(Collectors.toList());
+
+        allBuldings.put(cacheKey, newUnits);
+
+        return newUnits;
     }
 
     public List<Minion> getAllMinions(boolean onlyEnemy, boolean onlyNearest) {
-        return Arrays.stream(world.getMinions())
+        List<Boolean> cacheKey = Arrays.asList(onlyEnemy, onlyNearest);
+
+        if (allMinions.get(cacheKey) != null) return allMinions.get(cacheKey);
+
+        List<Minion> newUnits = Arrays.stream(world.getMinions())
                 .filter(filterLivingUnits(onlyEnemy, onlyNearest))
                 .collect(Collectors.toList());
+
+        allMinions.put(cacheKey, newUnits);
+
+        return newUnits;
     }
 
-    public Stream<Tree> getAllTrees() {
-        return Arrays.stream(world.getTrees())
-                .filter(filterLivingUnits(false, true));
-    }
+    public List<Tree> getAllTrees() {
+        if (allTrees != null) return allTrees;
 
+        List<Tree> newUnits = Arrays.stream(world.getTrees())
+                .filter(filterLivingUnits(false, true))
+                .collect(Collectors.toList());
+
+        allTrees = newUnits;
+
+        return allTrees;
+    }
 
     public boolean isEnemy(Faction self, LivingUnit unit) {
         return self != unit.getFaction() && unit.getFaction() != Faction.NEUTRAL;

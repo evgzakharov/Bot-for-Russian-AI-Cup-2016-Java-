@@ -2,7 +2,7 @@ import java.util.*;
 
 public class Matrix {
 
-    private float pathCount = 0;
+    private double pathCount = 0;
 
     private Point2D point;
     private MatrixPoint matrixPoint;
@@ -24,11 +24,11 @@ public class Matrix {
         return matrixPoint;
     }
 
-    public float getPathCount() {
+    public double getPathCount() {
         return pathCount;
     }
 
-    public void setPathCount(float pathCount) {
+    public void setPathCount(double pathCount) {
         this.pathCount = pathCount;
     }
 
