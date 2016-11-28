@@ -314,7 +314,7 @@ public class MapWayFinder {
                                 newWayLines
                         );
 
-                        return findMapWayPoint(wayParams);
+                        return findMapWayPoint(newWayParams);
                     })
                     .filter(Optional::isPresent)
                     .map(Optional::get)

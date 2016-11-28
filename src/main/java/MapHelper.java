@@ -13,7 +13,7 @@ public class MapHelper {
     public static double mapSize = 4000D;
 
     public static final Point2D friendBasePoint = new Point2D(100.0D, mapSize - 100.0D);
-    public static Point2D topPoint = new Point2D(100.0D, mapSize - 100.0D);
+    public static Point2D topPoint = new Point2D(100.0D, 100.0D);
     public static Point2D middlePoint = new Point2D(2000.0D, 2000.0D);
     public static Point2D bottomPoint = new Point2D(mapSize - 100.0D, mapSize - 100.0D);
     public static Point2D enemyBasePoint = new Point2D(mapSize - 100.0D, 100.0D);
@@ -64,8 +64,8 @@ public class MapHelper {
         ));
     }
 
-    public static final double LINE_RESOLVING_POSITION = 120D;
-    public static final double LINE_RESOLVING_DISTANCE = 120D;
+    public static final double LINE_RESOLVING_POSITION = 200D;
+    public static final double LINE_RESOLVING_DISTANCE = 200D;
 
     public static final double DEAD_TOWER_HP_FACTOR = 0.1D;
 
@@ -212,7 +212,7 @@ public class MapHelper {
 
     public Optional<LinePosition> getWizardLinePosition(List<LinePosition> wizardPositions, LaneType laneType) {
         return wizardPositions.stream()
-                .filter(linePosition -> linePosition.getMapLine().getLaneType().equals(laneType))
+                .filter(linePosition -> linePosition.getMapLine().getLaneType() != null && linePosition.getMapLine().getLaneType().equals(laneType))
                 .findFirst();
     }
 
@@ -262,7 +262,7 @@ public class MapHelper {
         double distanceToPoint = point.getDistanceTo(line.getStartPoint());
 
         double distanceFromLine = abs(sin(angleToPoint) * distanceToPoint);
-        double linePosition = line.getLineLength() + cos(angleToPoint) * distanceToPoint;
+        double linePosition = cos(angleToPoint) * distanceToPoint;
 
         return new Pair<>(distanceFromLine, linePosition);
     }

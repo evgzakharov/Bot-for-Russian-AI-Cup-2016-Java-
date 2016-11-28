@@ -8,19 +8,19 @@ public class AttackActionManager extends ActionManager {
     @Override
     public ActionMode move() {
         if (self.getLife() < self.getMaxLife() * LOW_HP_FACTOR) {
-            moveHelper.goTo(lineHelper.getPreviousWaypoint(strategyManager.getLaneType()));
+            moveHelper.goTo(mapWayFinder.getPreviousWaypoint(strategyManager.getLaneType()));
             return ActionMode.ATTACK;
         }
 
         Optional<LivingUnit> nearestTarget = findHelper.getNearestEnemy();
         if (isNeedToMoveBack()) {
-            moveHelper.goWithoutTurn(lineHelper.getPreviousWaypoint(strategyManager.getLaneType()));
+            moveHelper.goWithoutTurn(mapWayFinder.getPreviousWaypoint(strategyManager.getLaneType()));
 
             nearestTarget.ifPresent(livingUnit -> shootHelder.shootToTarget(livingUnit));
 
             return ActionMode.ATTACK;
         } else {
-            moveHelper.goWithoutTurn(lineHelper.getNextWaypoint(strategyManager.getLaneType()));
+            moveHelper.goWithoutTurn(mapWayFinder.getNextWaypoint(strategyManager.getLaneType()));
 
             if (nearestTarget.isPresent()) {
                 shootHelder.shootToTarget(nearestTarget.get());
@@ -28,7 +28,7 @@ public class AttackActionManager extends ActionManager {
             }
         }
 
-        moveHelper.goTo(lineHelper.getPreviousWaypoint(strategyManager.getLaneType()));
+        moveHelper.goTo(mapWayFinder.getPreviousWaypoint(strategyManager.getLaneType()));
 
         Optional<Tree> nearestTree = findHelper.getAllTrees().stream()
                 .filter(tree -> self.getAngleTo(tree) < game.getStaffSector())

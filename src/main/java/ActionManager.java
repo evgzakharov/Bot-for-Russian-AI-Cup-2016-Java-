@@ -16,7 +16,7 @@ abstract class ActionManager {
     protected FindHelper findHelper;
     protected ShootHelper shootHelder;
     protected MoveHelper moveHelper;
-    protected MapHelper lineHelper;
+    protected MapWayFinder mapWayFinder;
     protected StrategyManager strategyManager;
 
     protected static final double LOW_HP_FACTOR = 0.25D;
@@ -33,7 +33,7 @@ abstract class ActionManager {
         this.findHelper = new FindHelper(world, game, self);
         this.shootHelder = new ShootHelper(self, game, move);
         this.moveHelper = new MoveHelper(self, world, game, move);
-        this.lineHelper = new MapHelper(world, game, self);
+        this.mapWayFinder = new MapWayFinder(world, game, self);
         this.strategyManager = strategyManager;
     }
 
