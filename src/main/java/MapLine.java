@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static java.lang.StrictMath.PI;
+
 public class MapLine {
     private Point2D startPoint;
     private Point2D endPoint;
@@ -31,27 +33,25 @@ public class MapLine {
     private List<MapLine> endLines = new ArrayList<>();
 
     public MapLine(Point2D startPoint, Point2D endPoint, @Nullable LaneType laneType) {
-        this.startPoint = startPoint;
-        this.endPoint = endPoint;
-        this.laneType = laneType;
-
-        this.lineLength = startPoint.getDistanceTo(endPoint);
-        this.angle = StrictMath.asin((startPoint.getY() - endPoint.getY()) / lineLength);
+        this(startPoint, endPoint, laneType, null);
     }
 
-    public MapLine(Point2D startPoint, Point2D endPoint, @Nullable LaneType laneType, boolean isEnemy) {
+    public MapLine(Point2D startPoint, Point2D endPoint, @Nullable LaneType laneType, Boolean isEnemy) {
         this.startPoint = startPoint;
         this.endPoint = endPoint;
         this.laneType = laneType;
 
         this.lineLength = startPoint.getDistanceTo(endPoint);
-        this.isEnemy = isEnemy;
+        this.angle = StrictMath.asin((endPoint.getY() - startPoint.getY()) / lineLength);
 
+        if (isEnemy == null) return;
+
+        this.isEnemy = isEnemy;
         if (isEnemy) {
             deadEnemyTowerCount = 2;
             mapLineStatus = MapLineStatus.RED;
         } else {
-            deadFriendTowerCount = 2;
+            deadFriendTowerCount = 0;
             mapLineStatus = MapLineStatus.GREEN;
         }
     }

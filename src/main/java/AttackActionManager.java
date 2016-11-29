@@ -28,7 +28,7 @@ public class AttackActionManager extends ActionManager {
             }
         }
 
-        moveHelper.goTo(mapWayFinder.getPreviousWaypoint(strategyManager.getLaneType()));
+        moveHelper.goTo(mapWayFinder.getNextWaypoint(strategyManager.getLaneType()));
 
         Optional<Tree> nearestTree = findHelper.getAllTrees().stream()
                 .filter(tree -> self.getAngleTo(tree) < game.getStaffSector())

@@ -28,7 +28,7 @@ public class WayFinder {
         Matrix matrixStart = new Matrix(new Point2D(wizard.getX(), wizard.getY()), new MatrixPoint(), null);
         matrixStart.setPathCount(0);
 
-        List<LivingUnit> allUnits = findHelper.getAllUnits(true, false, false);
+        List<LivingUnit> allUnits = findHelper.getAllUnits(true, false, true);
 
         List<Point2D> findLine = growMatrix(Collections.singletonList(matrixStart), point, allUnits);
 
@@ -94,6 +94,8 @@ public class WayFinder {
 
     private boolean freeLocation(Point2D newPoint, List<LivingUnit> allUnits) {
         return allUnits.stream()
+                .filter(unit -> abs(unit.getX() - wizard.getX()) < game.getWizardCastRange())
+                .filter(unit -> abs(unit.getX() - wizard.getX()) < game.getWizardCastRange())
                 .filter(unit -> abs(unit.getX() - newPoint.getX()) < MAX_RANGE)
                 .filter(unit -> abs(unit.getY() - newPoint.getY()) < MAX_RANGE)
                 .noneMatch(unit -> newPoint.getDistanceTo(unit) <= getUnitDistance(unit) + wizard.getRadius() + MIN_CLOSEST_RANGE);

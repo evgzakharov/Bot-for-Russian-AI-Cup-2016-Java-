@@ -70,6 +70,10 @@ public class StrategyManager {
         return laneType;
     }
 
+    public void setLaneType(LaneType laneType) {
+        this.laneType = laneType;
+    }
+
     public ActionMode getActionMode() {
         return actionMode;
     }

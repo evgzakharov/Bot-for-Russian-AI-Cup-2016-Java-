@@ -43,7 +43,9 @@ abstract class ActionManager {
                 .filter(tree -> self.getDistanceTo(tree) < self.getRadius() + tree.getRadius() + MIN_CLOSEST_DISTANCE)
                 .findAny();
 
-        nearestTree.ifPresent(tree -> move.setAction(ActionType.STAFF));
+        nearestTree.ifPresent(tree -> {
+            shootHelder.shootToTarget(tree);
+        });
 
         return ActionMode.ATTACK;
     }

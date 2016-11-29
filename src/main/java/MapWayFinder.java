@@ -15,7 +15,7 @@ public class MapWayFinder {
     private Wizard wizard;
     private MapHelper mapHelper;
 
-    public static final double NEXT_LINE_DISTANCE = 120D;
+    public static final double NEXT_LINE_DISTANCE = 50D;
     public static final double NEXT_LINE_DISTANCE_MULTIPLIER = 1.1;
 
     public MapWayFinder(World world, Game game, Wizard wizard) {
@@ -31,20 +31,20 @@ public class MapWayFinder {
 
     public Point2D getNextWaypoint(LaneType laneType) {
         List<LinePosition> wizardPositions = mapHelper.getLinePositions(wizard);
-        Optional<LinePosition> wizardLinePosition = mapHelper.getWizardLinePosition(wizardPositions, laneType);
+        List<LinePosition> wizardLinePosition = mapHelper.getWizardLinePosition(wizardPositions, laneType);
 
-        if (wizardLinePosition.isPresent())
-            return findNextPoint(wizardLinePosition.get(), laneType);
+        if (!wizardLinePosition.isEmpty())
+            return findNextPoint(wizardLinePosition.get(wizardLinePosition.size() - 1), laneType);
 
         return getStartLinePoint(wizardPositions, laneType);
     }
 
     public Point2D getPreviousWaypoint(LaneType laneType) {
         List<LinePosition> wizardPositions = mapHelper.getLinePositions(wizard);
-        Optional<LinePosition> wizardLinePosition = mapHelper.getWizardLinePosition(wizardPositions, laneType);
+        List<LinePosition> wizardLinePosition = mapHelper.getWizardLinePosition(wizardPositions, laneType);
 
-        if (wizardLinePosition.isPresent())
-            return findPreviousPoint(wizardLinePosition.get(), laneType);
+        if (!wizardLinePosition.isEmpty())
+            return findPreviousPoint(wizardLinePosition.get(0), laneType);
 
         return getStartLinePoint(wizardPositions, laneType);
     }
@@ -57,7 +57,7 @@ public class MapWayFinder {
                     .filter(line -> line.getLaneType() == laneType).findFirst();
 
             if (nextLine.isPresent())
-                return mapHelper.getPointInLine(nextLine.get(), NEXT_LINE_DISTANCE);
+                return mapHelper.getPointInLine(nextLine.get(), NEXT_LINE_DISTANCE * NEXT_LINE_DISTANCE_MULTIPLIER);
             else
                 return wizardLinePosition.getMapLine().getEndPoint();
         } else
@@ -70,7 +70,7 @@ public class MapWayFinder {
                     .filter(line -> line.getLaneType() == laneType).findFirst();
 
             if (previousLine.isPresent())
-                return mapHelper.getPointInLine(previousLine.get(), previousLine.get().getLineLength() - NEXT_LINE_DISTANCE);
+                return mapHelper.getPointInLine(previousLine.get(), previousLine.get().getLineLength() - NEXT_LINE_DISTANCE * NEXT_LINE_DISTANCE_MULTIPLIER);
             else
                 return wizardLinePosition.getMapLine().getStartPoint();
         } else

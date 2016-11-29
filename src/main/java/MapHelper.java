@@ -13,8 +13,8 @@ public class MapHelper {
     public static double mapSize = 4000D;
 
     public static final Point2D friendBasePoint = new Point2D(100.0D, mapSize - 100.0D);
-    public static Point2D topPoint = new Point2D(100.0D, 100.0D);
-    public static Point2D middlePoint = new Point2D(2000.0D, 2000.0D);
+    public static Point2D topPoint = new Point2D(200.0D, 200.0D);
+    public static Point2D middlePoint = new Point2D(1876.0D, 2026);
     public static Point2D bottomPoint = new Point2D(mapSize - 100.0D, mapSize - 100.0D);
     public static Point2D enemyBasePoint = new Point2D(mapSize - 100.0D, 100.0D);
 
@@ -64,7 +64,7 @@ public class MapHelper {
         ));
     }
 
-    public static final double LINE_RESOLVING_POSITION = 200D;
+    public static final double LINE_RESOLVING_POSITION = 100D;
     public static final double LINE_RESOLVING_DISTANCE = 200D;
 
     public static final double DEAD_TOWER_HP_FACTOR = 0.1D;
@@ -82,10 +82,25 @@ public class MapHelper {
     }
 
     private void updateLineInfo() {
+        clearLinesInfo();
+
         updateTowerInfo();
         updateWizardPositions();
         updateMinionPositions();
         updateStatuses();
+    }
+
+    private void clearLinesInfo() {
+        mapLines.forEach(mapLine -> {
+            mapLine.getEnemyWizardPositions().clear();
+            mapLine.getFriendWizardPositions().clear();
+
+            mapLine.setEnemyPosition(-1);
+            mapLine.setFriendPosition(-1);
+
+            mapLine.setDeadEnemyTowerCount(0);
+            mapLine.setDeadFriendTowerCount(0);
+        });
     }
 
     private void updateStatuses() {
@@ -117,7 +132,10 @@ public class MapHelper {
                 });
 
         deadGuardTowers.forEach((point2D, tower) -> {
-            List<LinePosition> linePositions = getLinePositions(tower);
+            List<LinePosition> linePositions = getLinePositions(tower).stream()
+                    .filter(linePosition -> linePosition.getMapLine().getLaneType() != null)
+                    .collect(Collectors.toList());
+
             if (linePositions.size() != 1)
                 throw new RuntimeException("error in function getLinePositions, guard tower exist in two lines");
 
@@ -133,17 +151,17 @@ public class MapHelper {
     private void updateWizardPositions() {
         List<Wizard> allWizards = findHelper.getAllWizards(false, false);
 
-        allWizards.forEach(wizard -> {
-            List<LinePosition> linePositions = getLinePositions(wizard);
+        allWizards.forEach(someWizard -> {
+            List<LinePosition> linePositions = getLinePositions(someWizard);
 
             linePositions.forEach(linePosition -> {
                 MapLine wizardLine = linePosition.getMapLine();
-                Point2D wizardPoint = new Point2D(wizard.getX(), wizard.getY());
+                Point2D wizardPoint = new Point2D(someWizard.getX(), someWizard.getY());
 
-                if (findHelper.isEnemy(wizard.getFaction(), wizard))
-                    wizardLine.getFriendWizardPositions().put(wizardPoint, linePosition.getPosition());
-                else
+                if (findHelper.isEnemy(wizard.getFaction(), someWizard))
                     wizardLine.getEnemyWizardPositions().put(wizardPoint, linePosition.getPosition());
+                else
+                    wizardLine.getFriendWizardPositions().put(wizardPoint, linePosition.getPosition());
             });
         });
     }
@@ -180,12 +198,7 @@ public class MapHelper {
     public List<LinePosition> getLinePositions(double x, double y) {
         Point2D searchingPoint = new Point2D(x, y);
 
-        Point2D nearestPoint = mapPoints.stream()
-                .min(Comparator.comparingDouble(searchingPoint::getDistanceTo))
-                .get();
-
         return mapLines.stream()
-                .filter(line -> line.getStartPoint().equals(nearestPoint) || line.getEndPoint().equals(nearestPoint))
                 .map(line -> {
                     Pair<Double, Double> distance = getDistanceFromLine(searchingPoint, line);
 
@@ -210,10 +223,11 @@ public class MapHelper {
         return getLinePositions(unit.getX(), unit.getY());
     }
 
-    public Optional<LinePosition> getWizardLinePosition(List<LinePosition> wizardPositions, LaneType laneType) {
+    public List<LinePosition> getWizardLinePosition(List<LinePosition> wizardPositions, LaneType laneType) {
         return wizardPositions.stream()
                 .filter(linePosition -> linePosition.getMapLine().getLaneType() != null && linePosition.getMapLine().getLaneType().equals(laneType))
-                .findFirst();
+                .sorted(Comparator.comparing(value -> value.getMapLine().getEnemy()))
+                .collect(Collectors.toList());
     }
 
     public Point2D getPointInLine(LinePosition linePosition) {
@@ -268,19 +282,16 @@ public class MapHelper {
     }
 
     private double getAngleTo(MapLine mapLine, Point2D point) {
-        double absoluteAngleTo = atan2(point.getY() - mapLine.getStartPoint().getY(), point.getX() - mapLine.getStartPoint().getX());
-        double relativeAngleTo = absoluteAngleTo - mapLine.getAngle();
+        double deltaX = point.getX() - mapLine.getStartPoint().getX();
+        double deltaY = point.getY() - mapLine.getStartPoint().getY();
 
-        while (relativeAngleTo > PI) {
-            relativeAngleTo -= 2.0D * PI;
-        }
+        double absoluteAngleTo;
+        if (deltaX == 0) {
+            if (deltaY > 0) absoluteAngleTo = -PI / 2;
+            else absoluteAngleTo = PI / 2;
+        } else
+            absoluteAngleTo = atan(deltaY / deltaX);
 
-        while (relativeAngleTo < -PI) {
-            relativeAngleTo += 2.0D * PI;
-        }
-
-        return relativeAngleTo;
+        return abs(absoluteAngleTo - mapLine.getAngle());
     }
-
-
 }
