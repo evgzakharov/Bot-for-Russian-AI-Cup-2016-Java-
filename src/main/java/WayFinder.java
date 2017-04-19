@@ -96,20 +96,27 @@ public class WayFinder {
         return allUnits.stream()
                 .filter(unit -> abs(unit.getX() - wizard.getX()) < game.getWizardCastRange())
                 .filter(unit -> abs(unit.getX() - wizard.getX()) < game.getWizardCastRange())
-                .filter(unit -> abs(unit.getX() - newPoint.getX()) < MAX_RANGE)
-                .filter(unit -> abs(unit.getY() - newPoint.getY()) < MAX_RANGE)
+                .filter(unit -> isFractionBase(unit) || abs(unit.getX() - newPoint.getX()) < MAX_RANGE)
+                .filter(unit -> isFractionBase(unit) || abs(unit.getY() - newPoint.getY()) < MAX_RANGE)
                 .noneMatch(unit -> newPoint.getDistanceTo(unit) <= getUnitDistance(unit) + wizard.getRadius() + MIN_CLOSEST_RANGE);
     }
 
     private double getUnitDistance(LivingUnit unit) {
+        if (isFractionBase(unit)) {
+            return unit.getRadius() + MIN_CLOSEST_RANGE * 5;
+        }
+
+        return unit.getRadius();
+    }
+
+    private boolean isFractionBase(LivingUnit unit) {
         if (unit instanceof Building) {
             Building building = (Building) unit;
 
             if (building.getType() == BuildingType.FACTION_BASE)
-                return unit.getRadius() + MIN_CLOSEST_RANGE * 2;
+                return true;
         }
-
-        return unit.getRadius();
+        return false;
     }
 
     private List<Point2D> findLineFromMatrix(Matrix stepMatrix) {

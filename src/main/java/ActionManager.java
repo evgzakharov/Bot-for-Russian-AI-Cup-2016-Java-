@@ -23,7 +23,7 @@ abstract class ActionManager {
     protected static final double LOW_BUIDING_FACTOR = 0.1D;
     protected static final double LOW_MINION_FACTOR = 0.35D;
 
-    protected static final double MIN_CLOSEST_DISTANCE = 5D;
+    protected static final double MIN_CLOSEST_DISTANCE = 20D;
 
     public void init(Wizard self, World world, Game game, Move move, StrategyManager strategyManager) {
         this.self = self;
@@ -39,7 +39,7 @@ abstract class ActionManager {
 
     public ActionMode move() {
         Optional<Tree> nearestTree = findHelper.getAllTrees().stream()
-                .filter(tree -> self.getAngleTo(tree) < game.getStaffSector())
+                .filter(tree -> abs(self.getAngleTo(tree)) < PI / 2)
                 .filter(tree -> self.getDistanceTo(tree) < self.getRadius() + tree.getRadius() + MIN_CLOSEST_DISTANCE)
                 .findAny();
 

@@ -9,16 +9,16 @@ public class WayParams {
     private List<LinePosition> pointLinePositions;
     private boolean safeWay;
 
-    private List<MapLine> wayLines;
+    private List<MapLine> checkedLines;
 
-    public WayParams(MapLine startMapLine, MapLine mapLine, Point2D startPoint, Double startDestination, List<LinePosition> pointLinePositions, boolean safeWay, List<MapLine> wayLines) {
+    public WayParams(MapLine startMapLine, MapLine mapLine, Point2D startPoint, Double startDestination, List<LinePosition> pointLinePositions, boolean safeWay, List<MapLine> checkLines) {
         this.startMapLine = startMapLine;
         this.mapLine = mapLine;
         this.startPoint = startPoint;
         this.startDestination = startDestination;
         this.pointLinePositions = pointLinePositions;
         this.safeWay = safeWay;
-        this.wayLines = wayLines;
+        this.checkedLines = checkLines;
     }
 
     public MapLine getStartMapLine() {
@@ -45,7 +45,7 @@ public class WayParams {
         return safeWay;
     }
 
-    public List<MapLine> getWayLines() {
-        return wayLines;
+    public List<MapLine> getCheckedLines() {
+        return checkedLines;
     }
 }

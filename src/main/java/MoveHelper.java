@@ -14,6 +14,9 @@ public class MoveHelper {
     private Game game;
     private Move move;
 
+    private Point2D lastFindingPoint = null;
+    private Point2D lastFoundPoint = null;
+
     public MoveHelper(Wizard self, World world, Game game, Move move) {
         this.self = self;
         this.world = world;
@@ -47,11 +50,21 @@ public class MoveHelper {
     }
 
     public Point2D correctPoint(Point2D point2D) {
+        if (point2D.equals(lastFindingPoint)) {
+            if (lastFoundPoint != null) return lastFoundPoint;
+            else return point2D;
+        }
+
+        lastFindingPoint = point2D;
+
         WayFinder wayFinder = new WayFinder(self, world, game);
         List<Point2D> way = wayFinder.findWay(point2D);
 
         if (way != null && way.size() > 0) {
-            return way.get(0);
+            Point2D findPoint = way.get(0);
+            lastFoundPoint = findPoint;
+
+            return findPoint;
         }
 
         return point2D;

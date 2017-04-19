@@ -1,7 +1,10 @@
 import model.*;
 
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class StrategyManager {
 
@@ -31,7 +34,34 @@ public class StrategyManager {
 
         actionManager.init(self, world, game, move, this);
 
+        laneDecision();
+
         actionMode = actionManager.move();
+    }
+
+    private void laneDecision() {
+        MapLine friendMostKillingLine = MapHelper.mapLines.stream()
+                .filter(MapLine::getEnemy)
+                .sorted(Comparator.comparing(MapLine::getDeadFriendTowerCount).reversed())
+                .findFirst().get();
+
+        if (friendMostKillingLine.getDeadFriendTowerCount() == 2 && friendMostKillingLine.getEnemyWizardPositions().size() > 0) {
+            laneType = friendMostKillingLine.getLaneType();
+        } else {
+            MapLine enemyMostKillingLine = MapHelper.mapLines.stream()
+                    .filter(MapLine::getEnemy)
+                    .sorted(Comparator.comparing(MapLine::getDeadEnemyTowerCount).reversed())
+                    .findFirst().get();
+
+            if (enemyMostKillingLine.getDeadEnemyTowerCount() == 2
+                    && enemyMostKillingLine.getFriendWizardPositions().size() <= enemyMostKillingLine.getEnemyWizardPositions().size()){
+                laneType = enemyMostKillingLine.getLaneType();
+            } else {
+                MapHelper.mapLines.stream()
+                        .filter(MapLine::getEnemy)
+                        .sorted(Comparator.comparing(MapLine::getDeadEnemyTowerCount).reversed())
+            }
+        }
     }
 
     private void initializeDefault() {

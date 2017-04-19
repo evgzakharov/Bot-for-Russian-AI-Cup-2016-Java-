@@ -13,6 +13,8 @@ public class AttackActionManager extends ActionManager {
         }
 
         Optional<LivingUnit> nearestTarget = findHelper.getNearestEnemy();
+
+        Point2D nextWaypoint = null;
         if (isNeedToMoveBack()) {
             moveHelper.goWithoutTurn(mapWayFinder.getPreviousWaypoint(strategyManager.getLaneType()));
 
@@ -20,7 +22,8 @@ public class AttackActionManager extends ActionManager {
 
             return ActionMode.ATTACK;
         } else {
-            moveHelper.goWithoutTurn(mapWayFinder.getNextWaypoint(strategyManager.getLaneType()));
+            nextWaypoint = mapWayFinder.getNextWaypoint(strategyManager.getLaneType());
+            moveHelper.goWithoutTurn(nextWaypoint);
 
             if (nearestTarget.isPresent()) {
                 shootHelder.shootToTarget(nearestTarget.get());
@@ -28,7 +31,7 @@ public class AttackActionManager extends ActionManager {
             }
         }
 
-        moveHelper.goTo(mapWayFinder.getNextWaypoint(strategyManager.getLaneType()));
+        moveHelper.goTo(nextWaypoint);
 
         Optional<Tree> nearestTree = findHelper.getAllTrees().stream()
                 .filter(tree -> self.getAngleTo(tree) < game.getStaffSector())
